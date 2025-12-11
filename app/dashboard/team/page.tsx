@@ -18,17 +18,26 @@ import { UserProfileModal } from "@/components/user-profile-modal"
 import type { User } from "@/lib/types"
 import {
   Plus,
+  Search,
+  Filter,
+  MoreVertical,
+  Shield,
+  Mail,
+  Phone,
+  Calendar,
+  MoreHorizontal,
+  FileText,
+  UserPlus,
   Users,
   Clock,
   CalendarDays,
-  Shield,
   LogIn,
   LogOut,
   CheckCircle2,
-  XCircle,
   AlertCircle,
-  Calendar,
+  Briefcase,
   Send,
+  XCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -142,71 +151,10 @@ export default function TeamPage() {
       <Header title="Nuux Team" subtitle="Recursos humanos, asistencia y control de acceso" />
 
       <div className="p-8">
-        {/* Check-in/Check-out Card */}
-        <Card className="p-6 bg-card border-border mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-4 rounded-2xl bg-primary/10">
-                <Clock className="w-8 h-8 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">Control de Asistencia</h2>
-                <p className="text-muted-foreground">
-                  {today} - {currentUser?.name || "Usuario"}
-                </p>
-              </div>
-            </div>
 
-            <div className="flex items-center gap-4">
-              {myAttendanceToday ? (
-                <div className="flex items-center gap-6">
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Entrada</p>
-                    <p className="text-2xl font-bold text-primary">{myAttendanceToday.checkIn || "--:--"}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Salida</p>
-                    <p className="text-2xl font-bold text-foreground">{myAttendanceToday.checkOut || "--:--"}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Horas</p>
-                    <p className="text-2xl font-bold text-primary">{myAttendanceToday.hoursWorked.toFixed(1)}h</p>
-                  </div>
-                  {!myAttendanceToday.checkOut && (
-                    <Button
-                      size="lg"
-                      onClick={handleCheckOut}
-                      className="bg-destructive hover:bg-destructive/90 text-white h-14 px-8"
-                    >
-                      <LogOut className="w-5 h-5 mr-2" />
-                      Registrar Salida
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <Button
-                  size="lg"
-                  onClick={handleCheckIn}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground h-14 px-8 neon-glow"
-                >
-                  <LogIn className="w-5 h-5 mr-2" />
-                  Registrar Entrada
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {myAttendanceToday?.overtimeHours ? (
-            <div className="mt-4 pt-4 border-t border-border">
-              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500">
-                Horas extra: {myAttendanceToday.overtimeHours.toFixed(1)}h
-              </Badge>
-            </div>
-          ) : null}
-        </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        < div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" >
           <Card className="p-6 bg-card border-border">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-primary/10">
@@ -251,10 +199,10 @@ export default function TeamPage() {
               </div>
             </div>
           </Card>
-        </div>
+        </div >
 
         {/* Tabs */}
-        <Tabs defaultValue="users" className="space-y-6">
+        < Tabs defaultValue="users" className="space-y-6" >
           <div className="flex items-center justify-between">
             <TabsList className="bg-secondary">
               <TabsTrigger value="users">Empleados</TabsTrigger>
@@ -640,18 +588,18 @@ export default function TeamPage() {
               )}
             </div>
           </TabsContent>
-        </Tabs>
-      </div>
+        </Tabs >
+      </div >
 
       {/* Modals */}
-      <PermissionsModal user={selectedUser} open={permissionsModalOpen} onClose={() => setPermissionsModalOpen(false)} />
-      <UserProfileModal
+      < PermissionsModal user={selectedUser} open={permissionsModalOpen} onClose={() => setPermissionsModalOpen(false)} />
+      < UserProfileModal
         user={selectedUser}
         open={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
         attendanceStats={selectedUser ? getAttendanceStats(selectedUser.id) : undefined}
         vacationStats={selectedUser ? getVacationStats(selectedUser.id) : undefined}
       />
-    </div>
+    </div >
   )
 }

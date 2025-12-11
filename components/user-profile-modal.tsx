@@ -39,7 +39,8 @@ interface UserProfileModalProps {
 export function UserProfileModal({ user, open, onClose, attendanceStats, vacationStats }: UserProfileModalProps) {
     if (!user) return null
 
-    const activePermissions = user.permissions.length
+    // Safe access to permissions
+    const activePermissions = (user as any).permissions?.length || 0
 
     return (
         <Dialog open={open} onOpenChange={onClose}>

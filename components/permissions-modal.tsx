@@ -93,7 +93,7 @@ export function PermissionsModal({ user, open, onClose }: PermissionsModalProps)
         <div className="space-y-3 max-h-96 overflow-y-auto">
           {allPermissions.map((permission) => {
             const info = permissionInfo[permission]
-            const hasPermission = user.permissions.includes(permission)
+            const hasPermission = (user as any).permissions?.includes(permission) || false
 
             return (
               <div
