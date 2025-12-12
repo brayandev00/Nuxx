@@ -98,6 +98,19 @@ export interface User {
   hireDate: string
   status: "active" | "inactive" | "vacation"
   phone?: string
+
+  // Rich Profile Fields
+  skills?: string[]
+  bio?: string
+  socialLinks?: {
+    linkedin?: string
+    twitter?: string
+    github?: string
+    portfolio?: string
+  }
+  managerId?: string
+  location?: string
+  achievements?: string[]
   address?: string
   lastLogin?: string
   twoFactorEnabled: boolean
@@ -150,24 +163,56 @@ export interface Warehouse {
 export interface PurchaseOrder {
   id: string
   tenantId: string
+  number: string // PO-2024-001
   supplierId: string
-  status: "draft" | "pending" | "approved" | "received" | "cancelled"
+  supplierName?: string // Cache for display
+  type: "inventory" | "service" | "asset"
+  status: "draft" | "pending_approval" | "approved" | "ordered" | "partial_received" | "received" | "cancelled"
+
+  // Items
   items: PurchaseOrderItem[]
+
+  // Financials
+  currency: string
   subtotal: number
   tax: number
   total: number
-  notes?: string
+
+  // Dates
   createdAt: string
+  expectedDate?: string
+  receivedDate?: string
+
+  // Meta
   createdBy: string
   approvedBy?: string
-  receivedAt?: string
+  notes?: string
 }
 
 export interface PurchaseOrderItem {
-  productId: string
+  id: string
+  productId?: string // Optional, for inventory items
+  description: string // Required, free text for services
   quantity: number
   unitCost: number
   total: number
+  receivedQuantity?: number // For partial reception
+}
+
+// PROCUREMENT / PURCHASES
+export interface Supplier {
+  id: string
+  tenantId: string
+  name: string
+  taxId: string // NIT/RUT
+  email: string
+  phone?: string
+  address?: string
+  category: "technology" | "services" | "raw_materials" | "office_supplies" | "consulting" | "other"
+  paymentTerms: "immediate" | "net30" | "net60"
+  rating?: number // 1-5 stars
+  contactPerson?: string
+  status: "active" | "inactive" | "blacklisted"
 }
 
 // Attendance with Check-in/Check-out
@@ -300,6 +345,22 @@ export interface BankStatement {
   matchedTransactionId?: string
 }
 
+export interface BankAccount {
+  id: string
+  tenantId: string
+  name: string
+  type: "bank" | "cash" | "wallet" | "credit_card"
+  accountNumber?: string
+  bankName: string // e.g. "Bancolombia", "Davivienda"
+  currency: string
+  balance: number
+  status: "active" | "inactive"
+  lastReconciled?: string
+  color?: string // For UI visualization
+  provider?: "bancolombia" | "nequi" | "davivienda" | "other"
+  integrationStatus?: "connected" | "disconnected" | "syncing"
+}
+
 // Invoice
 export interface Invoice {
   id: string
@@ -375,20 +436,7 @@ export interface Product {
 }
 
 // Supplier
-export interface Supplier {
-  id: string
-  tenantId: string
-  name: string
-  email: string
-  phone: string
-  address: string
-  contactPerson: string
-  products: string[]
-  rating: number
-  paymentTerms: string
-  notes?: string
-  priceHistory: PriceHistoryEntry[]
-}
+// Supplier (moved up)
 
 export interface PriceHistoryEntry {
   productId: string

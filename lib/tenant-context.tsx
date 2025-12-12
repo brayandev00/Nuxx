@@ -261,16 +261,21 @@ interface TenantContextType {
   addRole: (role: Omit<CustomRole, "id" | "createdAt" | "updatedAt">) => void
   updateRole: (roleId: string, updates: Partial<CustomRole>) => void
   deleteRole: (roleId: string) => void
+  addUser: (user: Omit<User, "id">) => void
+  updateUser: (userId: string, updates: Partial<User>) => void
+  deleteUser: (userId: string) => void
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined)
 
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null)
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [tenants, setTenants] = useState<Tenant[]>(DEMO_TENANTS)
-  const [users] = useState<User[]>(DEMO_USERS)
+  const [users, setUsers] = useState<User[]>(DEMO_USERS)
   const [roles, setRoles] = useState<CustomRole[]>(DEFAULT_ROLES)
+
+  // Default to first user/tenant for Demo purposes if no session
+  const [currentTenant, setCurrentTenant] = useState<Tenant | null>(DEMO_TENANTS[0])
+  const [currentUser, setCurrentUser] = useState<User | null>(DEMO_USERS[0])
 
   const currentRole = currentUser ? roles.find((r) => r.id === currentUser.roleId) || null : null
 
@@ -382,6 +387,22 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     setRoles((prev) => prev.filter((r) => r.id !== roleId))
   }
 
+  const addUser = (user: Omit<User, "id">) => {
+    const newUser: User = {
+      ...user,
+      id: `user-${Date.now()}`,
+    }
+    setUsers(prev => [...prev, newUser])
+  }
+
+  const updateUser = (userId: string, updates: Partial<User>) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updates } : u))
+  }
+
+  const deleteUser = (userId: string) => {
+    setUsers(prev => prev.filter(u => u.id !== userId))
+  }
+
   return (
     <TenantContext.Provider
       value={{
@@ -402,6 +423,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         addRole,
         updateRole,
         deleteRole,
+        addUser,
+        updateUser,
+        deleteUser,
       }}
     >
       {children}

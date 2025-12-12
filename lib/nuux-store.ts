@@ -13,6 +13,10 @@ import type {
   VacationRequest,
   CostCenter,
   BankStatement,
+  CostCenter,
+  BankStatement,
+  AuditLog,
+  Supplier, // Add Supplier
 } from "./types"
 
 interface NuuxStore {
@@ -20,13 +24,18 @@ interface NuuxStore {
   products: Product[]
   stockMovements: StockMovement[]
   warehouses: Warehouse[]
+  warehouses: Warehouse[]
   purchaseOrders: PurchaseOrder[]
+  suppliers: Supplier[] // Add suppliers state
 
   // Finance State
   transactions: Transaction[]
   invoices: Invoice[]
   costCenters: CostCenter[]
   bankStatements: BankStatement[]
+  bankStatements: BankStatement[]
+  bankAccounts: BankAccount[]
+  auditLogs: AuditLog[]
 
   // RRHH State
   payrollRecords: PayrollRecord[]
@@ -39,13 +48,20 @@ interface NuuxStore {
   checkLowStock: () => Product[]
   generatePurchaseOrder: (productId: string) => PurchaseOrder | null
   transferStock: (productId: string, quantity: number, fromWarehouse: string, toWarehouse: string) => boolean
+  createPurchaseOrder: (po: Omit<PurchaseOrder, "id" | "createdAt">) => void // Add createPO
+  updatePurchaseOrder: (id: string, status: PurchaseOrder["status"]) => void
+
 
   // Finance Actions
   addTransaction: (transaction: Omit<Transaction, "id">) => void
+  addInvoice: (invoice: Omit<Invoice, "id" | "status">) => void
   markInvoiceAsPaid: (invoiceId: string) => void
   getCashFlowProjection: (days: number) => { date: string; balance: number }[]
   getExpensesByDepartment: () => { department: string; total: number; budget: number }[]
+  getCashFlowProjection: (days: number) => { date: string; balance: number }[]
+  getExpensesByDepartment: () => { department: string; total: number; budget: number }[]
   reconcileBankStatement: (statementId: string, matchId: string, type: "invoice" | "transaction") => void
+  connectBankAccount: (provider: "bancolombia" | "nequi", credentials: any) => Promise<boolean>
 
   // RRHH Actions
   checkIn: (userId: string) => void
@@ -253,16 +269,128 @@ const initialInvoices: Invoice[] = [
   },
 ]
 
+const initialSuppliers: Supplier[] = [
+  {
+    id: "SUP-001",
+    tenantId: "tenant-001",
+    name: "Apple Distribution Inc.",
+    taxId: "900.222.333-1",
+    email: "orders@apple.com",
+    category: "technology",
+    paymentTerms: "net30",
+    rating: 5,
+    status: "active",
+    contactPerson: "Steve J."
+  },
+  {
+    id: "SUP-002",
+    tenantId: "tenant-001",
+    name: "Office Depot",
+    taxId: "800.111.999-5",
+    email: "sales@officedepot.co",
+    category: "office_supplies",
+    paymentTerms: "immediate",
+    rating: 4,
+    status: "active"
+  }
+]
+
+const initialAuditLogs: AuditLog[] = [
+  {
+    id: "LOG-001",
+    tenantId: "tenant-001",
+    userId: "user-001",
+    userName: "Admin User",
+    action: "create",
+    module: "Finance",
+    entityType: "Invoice",
+    entityId: "INV-2024-001",
+    entityName: "Factura de Venta #001",
+    timestamp: new Date().toISOString(), // Today
+    ipAddress: "192.168.1.1",
+    userAgent: "Chrome/120"
+  },
+  {
+    id: "LOG-002",
+    tenantId: "tenant-001",
+    userId: "user-002",
+    userName: "Analista Contable",
+    action: "update",
+    module: "Finance",
+    entityType: "Transaction",
+    entityId: "TRX-123456",
+    entityName: "Pago Proveedores",
+    timestamp: new Date().toISOString(), // Today
+    ipAddress: "192.168.1.50",
+    userAgent: "Firefox/118"
+  },
+  {
+    id: "LOG-003",
+    tenantId: "tenant-001",
+    userId: "user-001",
+    userName: "Admin User",
+    action: "login",
+    module: "Security",
+    entityType: "Session",
+    entityId: "sess-009",
+    entityName: "Login",
+    timestamp: new Date().toISOString(), // Today
+    ipAddress: "192.168.1.1",
+    userAgent: "Chrome/120"
+  }
+]
+
+const initialBankAccounts: BankAccount[] = [
+  {
+    id: "BA-001",
+    tenantId: "tenant-001",
+    name: "Cuenta Principal",
+    type: "bank",
+    bankName: "Bancolombia",
+    accountNumber: "**** 4567",
+    currency: "COP",
+    balance: 15400000,
+    status: "active",
+    color: "#FCD34D" // Yellow-ish
+  },
+  {
+    id: "BA-002",
+    tenantId: "tenant-001",
+    name: "Caja Menor",
+    type: "cash",
+    bankName: "Efectivo",
+    currency: "COP",
+    balance: 850000,
+    status: "active",
+    color: "#10B981" // Green
+  },
+  {
+    id: "BA-003",
+    tenantId: "tenant-001",
+    name: "Nequi Corporativo",
+    type: "wallet",
+    bankName: "Nequi",
+    accountNumber: "3001234567",
+    currency: "COP",
+    balance: 2100000,
+    status: "active",
+    color: "#EC4899" // Pink
+  }
+]
+
 export const useNuuxStore = create<NuuxStore>((set, get) => ({
   // Initial State
   products: initialProducts,
   stockMovements: [],
   warehouses: initialWarehouses,
   purchaseOrders: [],
+  suppliers: initialSuppliers,
   transactions: [],
   invoices: initialInvoices,
   costCenters: initialCostCenters,
   bankStatements: [],
+  bankAccounts: initialBankAccounts,
+  auditLogs: initialAuditLogs,
   payrollRecords: [],
   attendanceRecords: [],
   vacationRequests: [],
@@ -378,11 +506,17 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
     const po: PurchaseOrder = {
       id: `PO-${Date.now()}`,
       tenantId: product.tenantId,
+      number: `PO-${Date.now().toString().slice(-6)}`,
       supplierId: product.supplierId,
+      supplierName: "Proveedor Auto",
+      type: "inventory",
       status: "draft",
+      currency: "COP",
       items: [
         {
+          id: `ITEM-${Date.now()}`,
           productId: product.id,
+          description: product.name,
           quantity: orderQuantity,
           unitCost: product.cost,
           total: orderQuantity * product.cost,
@@ -400,6 +534,42 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
     }))
 
     return po
+  },
+
+  createPurchaseOrder: (po) => {
+    const newPO: PurchaseOrder = {
+      ...po,
+      id: `PO-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    }
+    set(state => ({ purchaseOrders: [...state.purchaseOrders, newPO] }))
+  },
+
+  updatePurchaseOrder: (id, status) => {
+    set(state => ({
+      purchaseOrders: state.purchaseOrders.map(po => po.id === id ? { ...po, status } : po)
+    }))
+  },
+
+  addSupplier: (supplier) => {
+    const newSupplier: Supplier = {
+      ...supplier,
+      id: `SUP-${Date.now()}`,
+      status: 'active'
+    }
+    set(state => ({ suppliers: [...state.suppliers, newSupplier] }))
+  },
+
+  updateSupplier: (id, updates) => {
+    set(state => ({
+      suppliers: state.suppliers.map(s => s.id === id ? { ...s, ...updates } : s)
+    }))
+  },
+
+  deleteSupplier: (id) => {
+    set(state => ({
+      suppliers: state.suppliers.filter(s => s.id !== id)
+    }))
   },
 
   transferStock: (productId, quantity, fromWarehouse, toWarehouse) => {
@@ -447,6 +617,18 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
       transactions: [...state.transactions, newTransaction],
     }))
   },
+
+  addInvoice: (invoice) => {
+    const newInvoice: Invoice = {
+      ...invoice,
+      id: `INV-${Date.now()}`,
+      status: 'sent', // Default to sent for now
+    }
+    set((state) => ({
+      invoices: [newInvoice, ...state.invoices],
+    }))
+  },
+
 
   markInvoiceAsPaid: (invoiceId) => {
     set((state) => ({
