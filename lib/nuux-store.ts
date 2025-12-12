@@ -50,7 +50,7 @@ interface NuuxStore {
   // RRHH Actions
   checkIn: (userId: string) => void
   checkOut: (userId: string) => void
-  calculatePayroll: (userId: string, period: string) => PayrollRecord
+  calculatePayroll: (userId: string, period: string, overrides?: { baseSalary?: number, bonuses?: { concept: string, amount: number, type: "fixed" | "percentage" }[] }) => PayrollRecord
   requestVacation: (request: Omit<VacationRequest, "id" | "createdAt" | "status">) => void
   approveVacation: (requestId: string, approverId: string) => void
   rejectVacation: (requestId: string, approverId: string, reason: string) => void
@@ -496,10 +496,10 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
       bankStatements: state.bankStatements.map((stmt) =>
         stmt.id === statementId
           ? {
-              ...stmt,
-              reconciled: true,
-              ...(type === "invoice" ? { matchedInvoiceId: matchId } : { matchedTransactionId: matchId }),
-            }
+            ...stmt,
+            reconciled: true,
+            ...(type === "invoice" ? { matchedInvoiceId: matchId } : { matchedTransactionId: matchId }),
+          }
           : stmt,
       ),
     }))
@@ -553,7 +553,7 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
     }))
   },
 
-  calculatePayroll: (userId, period) => {
+  calculatePayroll: (userId, period, overrides) => {
     const { attendanceRecords } = get()
 
     // Get attendance for the period
@@ -562,8 +562,8 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
     const totalHours = periodRecords.reduce((sum, rec) => sum + rec.hoursWorked, 0)
     const totalOvertime = periodRecords.reduce((sum, rec) => sum + rec.overtimeHours, 0)
 
-    // Base calculations (example rates)
-    const baseSalary = 4500000 // This would come from user data
+    // Base calculations (allow overrides)
+    const baseSalary = overrides?.baseSalary || 4500000
     const hourlyRate = baseSalary / 192 // 192 hours/month
     const overtimeRate = hourlyRate * 1.5
     const overtimePay = totalOvertime * overtimeRate
@@ -576,6 +576,8 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
     const taxableIncome = baseSalary + overtimePay
     const isr = taxableIncome * 0.25
 
+    const extraBonuses = overrides?.bonuses || []
+
     const payroll: PayrollRecord = {
       id: `PAY-${Date.now()}`,
       tenantId: "tenant-001",
@@ -585,8 +587,8 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
       overtimeHours: totalOvertime,
       overtimeRate,
       overtimePay,
-      bonuses: [],
-      totalEarnings: baseSalary + overtimePay,
+      bonuses: [...extraBonuses],
+      totalEarnings: baseSalary + overtimePay + extraBonuses.reduce((acc, b) => acc + b.amount, 0),
       deductions: [
         { concept: "Salud", amount: healthDeduction, type: "percentage" },
         { concept: "Pension", amount: pensionDeduction, type: "percentage" },
@@ -594,7 +596,7 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
       totalDeductions: healthDeduction + pensionDeduction,
       taxes: [{ concept: "ISR", rate: 0.25, amount: isr }],
       totalTaxes: isr,
-      netPay: baseSalary + overtimePay - healthDeduction - pensionDeduction - isr,
+      netPay: baseSalary + overtimePay + extraBonuses.reduce((acc, b) => acc + b.amount, 0) - healthDeduction - pensionDeduction - isr,
       status: "calculated",
       createdAt: new Date().toISOString(),
     }
@@ -672,11 +674,11 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
           payrollRecords: state.payrollRecords.map((p) =>
             p.id === existingPayroll.id
               ? {
-                  ...p,
-                  bonuses: [...p.bonuses, { concept: "Comision de Venta", amount: commission, type: "fixed" as const }],
-                  totalEarnings: p.totalEarnings + commission,
-                  netPay: p.netPay + commission,
-                }
+                ...p,
+                bonuses: [...p.bonuses, { concept: "Comision de Venta", amount: commission, type: "fixed" as const }],
+                totalEarnings: p.totalEarnings + commission,
+                netPay: p.netPay + commission,
+              }
               : p,
           ),
         }

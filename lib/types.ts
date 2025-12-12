@@ -90,6 +90,7 @@ export interface User {
   name: string
   email: string
   avatar?: string
+  role: string
   roleId: string
   department: string
   position: string
@@ -497,6 +498,7 @@ export interface Document {
   type: "contrato" | "factura" | "certificado" | "brief" | "entregable" | "otro"
   category: "empleado" | "proyecto" | "cliente" | "proveedor" | "legal"
   fileUrl: string
+  description?: string
   fileSize: number
   mimeType: string
   folderId: string

@@ -5,10 +5,12 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AttendanceService } from "@/lib/attendance-service"
+import { useTenant } from "@/lib/tenant-context"
 import type { AttendanceFilters } from "@/lib/attendance-types"
 import { Download, Filter, Users, Clock, AlertCircle, CheckCircle2 } from "lucide-react"
 
 export default function AttendanceAdminPage() {
+    const { users } = useTenant() // Get users to access salary info
     const [filters, setFilters] = useState<AttendanceFilters>({
         startDate: new Date().toISOString().split("T")[0],
         endDate: new Date().toISOString().split("T")[0],
@@ -25,9 +27,21 @@ export default function AttendanceAdminPage() {
     const lateToday = todayRecords.filter((r) => r.status === "late").length
     const onTimeToday = todayRecords.filter((r) => r.status === "on-time").length
 
+    // Calculate estimated cost
+    const calculateEstimatedCost = (record: typeof records[0]) => {
+        const user = users.find(u => u.id === record.userId)
+        if (!user || !user.salary || !record.hoursWorked) return 0
+
+        // Simple estimation: Monthly Salary / 30 days / 8 hours = Hourly Rate
+        const hourlyRate = user.salary / 30 / 8
+        return record.hoursWorked * hourlyRate
+    }
+
+    const totalEstimatedCost = records.reduce((sum, record) => sum + calculateEstimatedCost(record), 0)
+
     const handleExport = () => {
         const csv = [
-            ["Fecha", "Empleado", "Entrada", "Salida", "Horas", "Estado", "Minutos Tarde"].join(","),
+            ["Fecha", "Empleado", "Entrada", "Salida", "Horas", "Estado", "Minutos Tarde", "Costo Est."].join(","),
             ...records.map((r) =>
                 [
                     r.date,
@@ -37,6 +51,7 @@ export default function AttendanceAdminPage() {
                     r.hoursWorked?.toFixed(2) || "-",
                     r.status,
                     r.minutesLate || 0,
+                    calculateEstimatedCost(r).toFixed(2)
                 ].join(",")
             ),
         ].join("\n")
@@ -107,8 +122,10 @@ export default function AttendanceAdminPage() {
                             <Clock className="w-5 h-5 text-purple-500" />
                         </div>
                         <div>
-                            <p className="text-sm text-zinc-400">Total Registros</p>
-                            <p className="text-2xl font-bold text-white">{records.length}</p>
+                            <p className="text-sm text-zinc-400">Costo Est. (Periodo)</p>
+                            <p className="text-2xl font-bold text-white">
+                                ${totalEstimatedCost.toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                            </p>
                         </div>
                     </div>
                 </Card>
@@ -146,7 +163,7 @@ export default function AttendanceAdminPage() {
                             onChange={(e) =>
                                 setFilters({ ...filters, status: e.target.value as AttendanceFilters["status"] })
                             }
-                            className="w-full h-10 px-3 rounded-md bg-zinc-800 border border-zinc-700 text-white"
+                            className="w-full h-10 px-3 rounded-md bg-zinc-800 border-zinc-700 text-white"
                         >
                             <option value="all">Todos</option>
                             <option value="on-time">A Tiempo</option>
@@ -184,54 +201,61 @@ export default function AttendanceAdminPage() {
                                 <th className="text-left py-3 px-4 text-sm font-medium text-zinc-400">Entrada</th>
                                 <th className="text-left py-3 px-4 text-sm font-medium text-zinc-400">Salida</th>
                                 <th className="text-left py-3 px-4 text-sm font-medium text-zinc-400">Horas</th>
+                                <th className="text-left py-3 px-4 text-sm font-medium text-zinc-400">Costo Est.</th>
                                 <th className="text-left py-3 px-4 text-sm font-medium text-zinc-400">Estado</th>
                             </tr>
                         </thead>
                         <tbody>
                             {records.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-8 text-zinc-500">
+                                    <td colSpan={7} className="text-center py-8 text-zinc-500">
                                         No hay registros para mostrar
                                     </td>
                                 </tr>
                             ) : (
-                                records.map((record) => (
-                                    <tr key={record.id} className="border-b border-zinc-800 hover:bg-zinc-800/50">
-                                        <td className="py-3 px-4 text-sm text-white">{record.date}</td>
-                                        <td className="py-3 px-4 text-sm text-white">{record.userName}</td>
-                                        <td className="py-3 px-4 text-sm text-zinc-400">
-                                            {new Date(record.clockIn).toLocaleTimeString("es-CO", {
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                            })}
-                                        </td>
-                                        <td className="py-3 px-4 text-sm text-zinc-400">
-                                            {record.clockOut
-                                                ? new Date(record.clockOut).toLocaleTimeString("es-CO", {
+                                records.map((record) => {
+                                    const cost = calculateEstimatedCost(record)
+                                    return (
+                                        <tr key={record.id} className="border-b border-zinc-800 hover:bg-zinc-800/50">
+                                            <td className="py-3 px-4 text-sm text-white">{record.date}</td>
+                                            <td className="py-3 px-4 text-sm text-white">{record.userName}</td>
+                                            <td className="py-3 px-4 text-sm text-zinc-400">
+                                                {new Date(record.clockIn).toLocaleTimeString("es-CO", {
                                                     hour: "2-digit",
                                                     minute: "2-digit",
-                                                })
-                                                : "-"}
-                                        </td>
-                                        <td className="py-3 px-4 text-sm font-medium text-emerald-500">
-                                            {record.hoursWorked?.toFixed(2) || "-"}
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <span
-                                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${record.status === "on-time"
+                                                })}
+                                            </td>
+                                            <td className="py-3 px-4 text-sm text-zinc-400">
+                                                {record.clockOut
+                                                    ? new Date(record.clockOut).toLocaleTimeString("es-CO", {
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })
+                                                    : "-"}
+                                            </td>
+                                            <td className="py-3 px-4 text-sm font-medium text-emerald-500">
+                                                {record.hoursWorked?.toFixed(2) || "-"}
+                                            </td>
+                                            <td className="py-3 px-4 text-sm text-zinc-300">
+                                                ${cost.toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <span
+                                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${record.status === "on-time"
                                                         ? "bg-emerald-500/10 text-emerald-500"
                                                         : record.status === "late"
                                                             ? "bg-amber-500/10 text-amber-500"
                                                             : "bg-zinc-700 text-zinc-300"
-                                                    }`}
-                                            >
-                                                {record.status === "on-time" && "A Tiempo"}
-                                                {record.status === "late" && `Tarde (${record.minutesLate}m)`}
-                                                {record.status === "in-progress" && "En Progreso"}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))
+                                                        }`}
+                                                >
+                                                    {record.status === "on-time" && "A Tiempo"}
+                                                    {record.status === "late" && `Tarde (${record.minutesLate}m)`}
+                                                    {record.status === "in-progress" && "En Progreso"}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    )
+                                })
                             )}
                         </tbody>
                     </table>
