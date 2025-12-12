@@ -2,7 +2,7 @@
 
 import type { AttendanceRecord, User } from "@/lib/types"
 import { Badge } from "./ui/badge"
-import { Clock, CheckCircle2, XCircle, AlertCircle, Palmtree, Thermometer } from "lucide-react"
+import { Clock, CheckCircle2, XCircle, AlertCircle, Palmtree, Thermometer, Laptop } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface AttendanceTableProps {
@@ -16,6 +16,7 @@ const statusConfig = {
   late: { label: "Tardanza", icon: AlertCircle, color: "text-yellow-500 bg-yellow-500/10" },
   vacation: { label: "Vacaciones", icon: Palmtree, color: "text-orange-500 bg-orange-500/10" },
   sick: { label: "Enfermo", icon: Thermometer, color: "text-blue-400 bg-blue-400/10" },
+  remote: { label: "Remoto", icon: Laptop, color: "text-purple-400 bg-purple-400/10" },
 }
 
 export function AttendanceTable({ records, users }: AttendanceTableProps) {
