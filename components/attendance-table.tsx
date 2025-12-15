@@ -1,8 +1,9 @@
 "use client"
 
-import type { AttendanceRecord, User } from "@/lib/types"
+import type { AttendanceRecord } from "@/lib/attendance-types"
+import type { User } from "@/lib/types"
 import { Badge } from "./ui/badge"
-import { Clock, CheckCircle2, XCircle, AlertCircle, Palmtree, Thermometer, Laptop } from "lucide-react"
+import { Clock, CheckCircle2, XCircle, AlertCircle, Palmtree, Thermometer, Laptop, Timer } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface AttendanceTableProps {
@@ -10,10 +11,13 @@ interface AttendanceTableProps {
   users: User[]
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
+  "on-time": { label: "A Tiempo", icon: CheckCircle2, color: "text-emerald-500 bg-emerald-500/10" },
+  "late": { label: "Tarde", icon: AlertCircle, color: "text-amber-500 bg-amber-500/10" },
+  "absent": { label: "Ausente", icon: XCircle, color: "text-destructive bg-destructive/10" },
+  "in-progress": { label: "En Progreso", icon: Timer, color: "text-blue-400 bg-blue-400/10" },
+  // Legacy support just in case
   present: { label: "Presente", icon: CheckCircle2, color: "text-primary bg-primary/10" },
-  absent: { label: "Ausente", icon: XCircle, color: "text-destructive bg-destructive/10" },
-  late: { label: "Tardanza", icon: AlertCircle, color: "text-yellow-500 bg-yellow-500/10" },
   vacation: { label: "Vacaciones", icon: Palmtree, color: "text-orange-500 bg-orange-500/10" },
   sick: { label: "Enfermo", icon: Thermometer, color: "text-blue-400 bg-blue-400/10" },
   remote: { label: "Remoto", icon: Laptop, color: "text-purple-400 bg-purple-400/10" },
@@ -21,6 +25,11 @@ const statusConfig = {
 
 export function AttendanceTable({ records, users }: AttendanceTableProps) {
   const getUser = (userId: string) => users.find((u) => u.id === userId)
+
+  const formatTime = (date?: Date) => {
+    if (!date) return "-"
+    return new Date(date).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })
+  }
 
   return (
     <div className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -38,7 +47,7 @@ export function AttendanceTable({ records, users }: AttendanceTableProps) {
           <tbody className="divide-y divide-border">
             {records.map((record) => {
               const user = getUser(record.userId)
-              const status = statusConfig[record.status]
+              const status = statusConfig[record.status] || statusConfig["present"]
               const StatusIcon = status.icon
 
               return (
@@ -52,28 +61,28 @@ export function AttendanceTable({ records, users }: AttendanceTableProps) {
                           .join("") || "?"}
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">{user?.name || "Desconocido"}</p>
-                        <p className="text-xs text-muted-foreground">{user?.position}</p>
+                        <p className="font-medium text-foreground">{user?.name || record.userName || "Desconocido"}</p>
+                        <p className="text-xs text-muted-foreground">{user?.position || "Empleado"}</p>
                       </div>
                     </div>
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2 text-foreground">
                       <Clock className="w-4 h-4 text-muted-foreground" />
-                      {record.checkIn || "-"}
+                      {formatTime(record.clockIn)}
                     </div>
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2 text-foreground">
                       <Clock className="w-4 h-4 text-muted-foreground" />
-                      {record.checkOut || "-"}
+                      {formatTime(record.clockOut)}
                     </div>
                   </td>
                   <td className="p-4">
                     <span
-                      className={cn("font-mono", record.hoursWorked >= 8 ? "text-primary" : "text-muted-foreground")}
+                      className={cn("font-mono", (record.hoursWorked || 0) >= 8 ? "text-primary" : "text-muted-foreground")}
                     >
-                      {record.hoursWorked > 0 ? `${record.hoursWorked.toFixed(1)}h` : "-"}
+                      {record.hoursWorked ? `${record.hoursWorked.toFixed(1)}h` : "-"}
                     </span>
                   </td>
                   <td className="p-4">

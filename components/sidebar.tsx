@@ -32,11 +32,8 @@ import { Button } from "./ui/button"
 import { useTenant } from "@/lib/tenant-context"
 
 const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", module: "dashboard" },
-  { href: "/dashboard/tasks", icon: ClipboardList, label: "Mis Tareas", module: "projects" },
-  { href: "/dashboard/attendance", icon: Clock, label: "Asistencias", module: "attendance" },
   { href: "/dashboard/projects", icon: FolderKanban, label: "Proyectos", module: "projects" },
-  { href: "/dashboard/crm", icon: Target, label: "CRM", module: "crm" },
+  { href: "/dashboard/requests", icon: FileText, label: "Solicitudes", module: "dashboard" }, // Replaced CRM
   { href: "/dashboard/analytics", icon: BarChart3, label: "Analitica", module: "analytics" },
   { href: "/dashboard/team", icon: Users, label: "Equipo", module: "team" },
   { href: "/dashboard/roles", icon: Shield, label: "Roles y Permisos", module: "roles" },
@@ -75,7 +72,7 @@ export function Sidebar() {
         <NuuxLogo size={collapsed ? "small" : "default"} />
       </div>
 
-      {/* Tenant Info */}
+      {/* Ten informacion  */}
       {!collapsed && (
         <div className="p-4 border-b border-zinc-800">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 transition-colors cursor-pointer">

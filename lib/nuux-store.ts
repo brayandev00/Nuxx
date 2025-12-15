@@ -13,10 +13,10 @@ import type {
   VacationRequest,
   CostCenter,
   BankStatement,
-  CostCenter,
-  BankStatement,
   AuditLog,
-  Supplier, // Add Supplier
+  Supplier,
+  BankAccount,
+  InvoiceTemplateConfig,
 } from "./types"
 
 interface NuuxStore {
@@ -24,15 +24,16 @@ interface NuuxStore {
   products: Product[]
   stockMovements: StockMovement[]
   warehouses: Warehouse[]
-  warehouses: Warehouse[]
   purchaseOrders: PurchaseOrder[]
-  suppliers: Supplier[] // Add suppliers state
+  suppliers: Supplier[]
+  addSupplier: (supplier: Omit<Supplier, "id" | "status">) => void
+  updateSupplier: (id: string, updates: Partial<Supplier>) => void
+  deleteSupplier: (id: string) => void
 
   // Finance State
   transactions: Transaction[]
   invoices: Invoice[]
   costCenters: CostCenter[]
-  bankStatements: BankStatement[]
   bankStatements: BankStatement[]
   bankAccounts: BankAccount[]
   auditLogs: AuditLog[]
@@ -55,9 +56,10 @@ interface NuuxStore {
   // Finance Actions
   addTransaction: (transaction: Omit<Transaction, "id">) => void
   addInvoice: (invoice: Omit<Invoice, "id" | "status">) => void
+  updateInvoice: (id: string, updates: Partial<Invoice>) => void
+  invoiceTemplate: InvoiceTemplateConfig
+  updateInvoiceTemplate: (config: Partial<InvoiceTemplateConfig>) => void
   markInvoiceAsPaid: (invoiceId: string) => void
-  getCashFlowProjection: (days: number) => { date: string; balance: number }[]
-  getExpensesByDepartment: () => { department: string; total: number; budget: number }[]
   getCashFlowProjection: (days: number) => { date: string; balance: number }[]
   getExpensesByDepartment: () => { department: string; total: number; budget: number }[]
   reconcileBankStatement: (statementId: string, matchId: string, type: "invoice" | "transaction") => void
@@ -395,6 +397,15 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
   attendanceRecords: [],
   vacationRequests: [],
 
+  // Invoice Template Default
+  invoiceTemplate: {
+    companyName: "Nuux Enterprise S.A.S",
+    companyAddress: "Bogotá D.C, Colombia | NIT: 900.123.456-7",
+    primaryColor: "#0f172a", // slate-900
+    footerText: "Gracias por su compra. Generado por Nuux Finance.",
+    showLogo: true,
+  },
+
   // KARDEX - FIFO Stock Out
   processSaleFIFO: (productId, quantity, reference) => {
     const { products, stockMovements } = get()
@@ -629,6 +640,21 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
     }))
   },
 
+  updateInvoice: (id, updates) => {
+    set((state) => ({
+      invoices: state.invoices.map((inv) =>
+        inv.id === id ? { ...inv, ...updates } : inv
+      ),
+    }))
+  },
+
+  updateInvoiceTemplate: (config) => {
+    set((state) => ({
+      invoiceTemplate: { ...state.invoiceTemplate, ...config }
+    }))
+  },
+
+
 
   markInvoiceAsPaid: (invoiceId) => {
     set((state) => ({
@@ -685,6 +711,14 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
           : stmt,
       ),
     }))
+  },
+
+  connectBankAccount: async (provider, credentials) => {
+    // Mock API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Mock success
+    return true;
   },
 
   // RRHH Actions

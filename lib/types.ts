@@ -74,6 +74,7 @@ export interface RolePermissions {
   procurement: ModulePermissions
   documents: ModulePermissions
   security: ModulePermissions
+  attendance: ModulePermissions
 }
 
 export interface ModulePermissions {
@@ -380,6 +381,15 @@ export interface Invoice {
   notes?: string
   salesCommission?: number
   salesPersonId?: string
+}
+
+export interface InvoiceTemplateConfig {
+  companyName: string
+  companyAddress: string
+  companyLogo?: string // URL
+  primaryColor: string // Hex code e.g. #000000
+  footerText: string
+  showLogo: boolean
 }
 
 export interface InvoiceItem {

@@ -50,17 +50,19 @@ import {
 import type { Invoice, InvoiceItem } from "@/lib/types"
 
 export default function FinancePage() {
-  const { transactions, invoices, costCenters, bankAccounts, auditLogs, getCashFlowProjection, getExpensesByDepartment, markInvoiceAsPaid, addTransaction, addInvoice, connectBankAccount } =
-    useNuuxStore()
-
   // State for Dialogs
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false)
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false) // New state
   const [linkBankOpen, setLinkBankOpen] = useState(false)
   const [viewInvoiceId, setViewInvoiceId] = useState<string | null>(null)
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null) // New state
 
   // Link Bank State
   const [linkState, setLinkState] = useState({ provider: 'bancolombia' as 'bancolombia' | 'nequi', username: '', password: '', status: 'idle' as 'idle' | 'loading' | 'success' })
+
+  const { transactions, invoices, costCenters, bankAccounts, auditLogs, getCashFlowProjection, getExpensesByDepartment, markInvoiceAsPaid, addTransaction, addInvoice, updateInvoice, connectBankAccount, invoiceTemplate, updateInvoiceTemplate } =
+    useNuuxStore()
 
   const handleLinkBank = async () => {
     setLinkState({ ...linkState, status: 'loading' })
@@ -174,21 +176,46 @@ export default function FinancePage() {
     const tax = subtotal * 0.19 // 19% VAT example
     const total = subtotal + tax
 
-    addInvoice({
-      tenantId: "tenant-001",
-      number: `INV-${Date.now().toString().slice(-6)}`,
-      clientId: "cli-new",
-      clientName: invoiceData.clientName,
-      clientEmail: invoiceData.clientEmail,
-      items: invoiceData.items,
-      subtotal,
-      tax,
-      total,
-      issueDate: new Date().toISOString().split('T')[0],
-      dueDate: invoiceData.dueDate || new Date().toISOString().split('T')[0],
-    })
+    if (editingInvoiceId) {
+      updateInvoice(editingInvoiceId, {
+        clientName: invoiceData.clientName,
+        clientEmail: invoiceData.clientEmail,
+        items: invoiceData.items,
+        subtotal,
+        tax,
+        total,
+        dueDate: invoiceData.dueDate || new Date().toISOString().split('T')[0],
+      })
+    } else {
+      addInvoice({
+        tenantId: "tenant-001",
+        number: `INV-${Date.now().toString().slice(-6)}`,
+        clientId: "cli-new",
+        clientName: invoiceData.clientName,
+        clientEmail: invoiceData.clientEmail,
+        items: invoiceData.items,
+        subtotal,
+        tax,
+        total,
+        issueDate: new Date().toISOString().split('T')[0],
+        dueDate: invoiceData.dueDate || new Date().toISOString().split('T')[0],
+      })
+    }
+
     setInvoiceDialogOpen(false)
+    setEditingInvoiceId(null)
     setInvoiceData({ clientName: "", clientEmail: "", dueDate: "", items: [{ id: "1", description: "", quantity: 1, unitPrice: 0, total: 0 }] })
+  }
+
+  const handleEditInvoice = (invoice: Invoice) => {
+    setEditingInvoiceId(invoice.id);
+    setInvoiceData({
+      clientName: invoice.clientName,
+      clientEmail: invoice.clientEmail,
+      dueDate: invoice.dueDate,
+      items: invoice.items
+    });
+    setInvoiceDialogOpen(true);
   }
 
   const selectedInvoice = invoices.find(inv => inv.id === viewInvoiceId)
@@ -487,18 +514,71 @@ export default function FinancePage() {
 
         {/* Tabs */}
         <Tabs defaultValue="invoices" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <TabsList className="bg-secondary">
-              <TabsTrigger value="invoices">Facturas por Cobrar</TabsTrigger>
-              <TabsTrigger value="transactions">Transacciones</TabsTrigger>
-              <TabsTrigger value="costcenters">Centros de Costo</TabsTrigger>
-              <TabsTrigger value="calendar">Calendario</TabsTrigger>
-            </TabsList>
-            <div className="flex gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-y-4 gap-x-4">
+            <div className="overflow-x-auto pb-2 sm:pb-0 max-w-full">
+              <TabsList className="bg-secondary justify-start">
+                <TabsTrigger value="invoices">Facturas por Cobrar</TabsTrigger>
+                <TabsTrigger value="transactions">Transacciones</TabsTrigger>
+                <TabsTrigger value="costcenters">Centros de Costo</TabsTrigger>
+                <TabsTrigger value="calendar">Calendario</TabsTrigger>
+              </TabsList>
+            </div>
+            <div className="flex flex-wrap gap-2 items-center">
               <Button onClick={handleExport} variant="outline" className="bg-transparent border-primary text-primary hover:bg-primary/10">
                 <Download className="w-4 h-4 mr-2" />
                 Exportar Reporte
               </Button>
+              <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="bg-transparent border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800">
+                    <Printer className="w-4 h-4 mr-2" />
+                    Diseño Factura
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-[#18181B] border-[#27272A] text-white">
+                  <DialogHeader><DialogTitle>Personalizar Plantilla de Factura</DialogTitle></DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Nombre de la Empresa</Label>
+                      <Input
+                        value={invoiceTemplate.companyName}
+                        onChange={(e) => updateInvoiceTemplate({ companyName: e.target.value })}
+                        className="bg-zinc-900 border-zinc-800"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Info / Dirección (Cabecera)</Label>
+                      <Textarea
+                        value={invoiceTemplate.companyAddress}
+                        onChange={(e) => updateInvoiceTemplate({ companyAddress: e.target.value })}
+                        className="bg-zinc-900 border-zinc-800"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Color Principal (Hex)</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={invoiceTemplate.primaryColor}
+                          onChange={(e) => updateInvoiceTemplate({ primaryColor: e.target.value })}
+                          className="bg-zinc-900 border-zinc-800 w-32"
+                        />
+                        <div
+                          className="w-10 h-10 rounded-lg border border-zinc-700"
+                          style={{ backgroundColor: invoiceTemplate.primaryColor }}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Texto Pie de Página</Label>
+                      <Input
+                        value={invoiceTemplate.footerText}
+                        onChange={(e) => updateInvoiceTemplate({ footerText: e.target.value })}
+                        className="bg-zinc-900 border-zinc-800"
+                      />
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <Dialog open={expenseDialogOpen} onOpenChange={setExpenseDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" className="bg-transparent border-primary text-primary hover:bg-primary/10">
@@ -724,6 +804,9 @@ export default function FinancePage() {
                             <Button size="sm" variant="ghost" className="h-8" onClick={() => setViewInvoiceId(invoice.id)}>
                               Ver
                             </Button>
+                            <Button size="sm" variant="ghost" className="h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10" onClick={() => handleEditInvoice(invoice)}>
+                              Editar
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -745,56 +828,58 @@ export default function FinancePage() {
               </div>
             ) : (
               <div className="bg-card rounded-2xl border border-border overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-secondary/50">
-                    <tr>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">ID</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Tipo</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Descripcion</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Categoria</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Monto</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {transactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-secondary/30">
-                        <td className="p-4 font-mono text-xs text-primary">{tx.id}</td>
-                        <td className="p-4">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              tx.type === "income"
-                                ? "bg-primary/10 text-primary"
-                                : "bg-destructive/10 text-destructive",
-                            )}
-                          >
-                            {tx.type === "income" ? "Ingreso" : "Egreso"}
-                          </Badge>
-                        </td>
-                        <td className="p-4">{tx.description}</td>
-                        <td className="p-4">
-                          <Badge variant="outline" className="bg-secondary">
-                            {tx.category}
-                          </Badge>
-                        </td>
-                        <td className="p-4 font-bold">${tx.amount.toLocaleString()}</td>
-                        <td className="p-4">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              tx.status === "completed"
-                                ? "bg-primary/10 text-primary"
-                                : "bg-yellow-500/10 text-yellow-500",
-                            )}
-                          >
-                            {tx.status}
-                          </Badge>
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-secondary/50">
+                      <tr>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">ID</th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Tipo</th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Descripcion</th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Categoria</th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Monto</th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Estado</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {transactions.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-secondary/30">
+                          <td className="p-4 font-mono text-xs text-primary">{tx.id}</td>
+                          <td className="p-4">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                tx.type === "income"
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-destructive/10 text-destructive",
+                              )}
+                            >
+                              {tx.type === "income" ? "Ingreso" : "Egreso"}
+                            </Badge>
+                          </td>
+                          <td className="p-4">{tx.description}</td>
+                          <td className="p-4">
+                            <Badge variant="outline" className="bg-secondary">
+                              {tx.category}
+                            </Badge>
+                          </td>
+                          <td className="p-4 font-bold">${tx.amount.toLocaleString()}</td>
+                          <td className="p-4">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                tx.status === "completed"
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-yellow-500/10 text-yellow-500",
+                              )}
+                            >
+                              {tx.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </TabsContent>
@@ -879,13 +964,18 @@ export default function FinancePage() {
                   {/* Invoice Header */}
                   <div className="flex justify-between mb-8">
                     <div>
-                      <h2 className="text-3xl font-bold text-slate-900 tracking-tight">FACTURA DE VENTA</h2>
+                      {invoiceTemplate.showLogo && (
+                        <div className="mb-4">
+                          {/* Placeholder for Logo */}
+                          <div className="bg-slate-100 w-12 h-12 rounded-lg flex items-center justify-center font-bold text-slate-400">LOG</div>
+                        </div>
+                      )}
+                      <h2 className="text-3xl font-bold tracking-tight" style={{ color: invoiceTemplate.primaryColor }}>FACTURA DE VENTA</h2>
                       <p className="text-slate-500 mt-1">N° {selectedInvoice.number}</p>
                     </div>
                     <div className="text-right">
-                      <h3 className="font-bold text-slate-900 text-lg">Nuux Enterprise S.A.S</h3>
-                      <p className="text-sm text-slate-500">NIT: 900.123.456-7</p>
-                      <p className="text-sm text-slate-500">Bogotá D.C, Colombia</p>
+                      <h3 className="font-bold text-slate-900 text-lg">{invoiceTemplate.companyName}</h3>
+                      <p className="text-sm text-slate-500 whitespace-pre-line">{invoiceTemplate.companyAddress}</p>
                     </div>
                   </div>
 
@@ -941,7 +1031,7 @@ export default function FinancePage() {
                         <span>IVA (19%)</span>
                         <span>${selectedInvoice.tax.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between text-slate-900 font-bold text-xl pt-3 border-t border-slate-200">
+                      <div className="flex justify-between font-bold text-xl pt-3 border-t border-slate-200" style={{ color: invoiceTemplate.primaryColor }}>
                         <span>Total</span>
                         <span>${selectedInvoice.total.toLocaleString()}</span>
                       </div>
@@ -951,12 +1041,12 @@ export default function FinancePage() {
 
                 {/* Footer Actions */}
                 <div className="bg-slate-50 p-6 border-t border-slate-200 flex justify-between items-center">
-                  <span className="text-xs text-slate-400">Generado por Nuux Finance</span>
+                  <span className="text-xs text-slate-400">{invoiceTemplate.footerText}</span>
                   <div className="flex gap-2">
                     <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-200">
                       <Printer className="w-4 h-4 mr-2" /> Imprimir
                     </Button>
-                    <Button className="bg-slate-900 text-white hover:bg-slate-800">
+                    <Button className="text-white hover:opacity-90" style={{ backgroundColor: invoiceTemplate.primaryColor }}>
                       <Download className="w-4 h-4 mr-2" /> Descargar PDF
                     </Button>
                   </div>

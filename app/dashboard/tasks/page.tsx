@@ -99,13 +99,19 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
 
   const users = getTenantUsers()
-  const canAssignTasks = hasPermission("projects", "create") || currentRole?.name === "Administrador"
+  // Allow everyone to assign tasks for now based on user request "quiero que en tareas yo tambien le pueda asignar tareas a otros trabajadores"
+  const canAssignTasks = true // hasPermission("projects", "create") || currentRole?.name === "Administrador"
 
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
     if (task.tenantId !== currentTenant?.id) return false
+
+    // "My Tasks" = Assigned TO me
     if (filter === "my" && task.assignedTo !== currentUser?.id) return false
+
+    // "Assigned by me" = Assigned BY me
     if (filter === "assigned" && task.assignedBy !== currentUser?.id) return false
+
     if (statusFilter !== "all" && task.status !== statusFilter) return false
     return true
   })
@@ -265,7 +271,7 @@ export default function TasksPage() {
                           <div className="flex items-center gap-4 text-xs text-zinc-500">
                             <span className="flex items-center gap-1">
                               <User className="w-3 h-3" />
-                              {getUserName(task.assignedTo)}
+                              {filter === "assigned" ? `Asignado a: ${getUserName(task.assignedTo)}` : `De: ${getUserName(task.assignedBy)}`}
                             </span>
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
