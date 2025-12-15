@@ -310,67 +310,166 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const currentRole = currentUser ? roles.find((r) => r.id === currentUser.roleId) || null : null
 
-  // Restore session from localStorage
+  // Restore session from token
   useEffect(() => {
-    const savedSession = localStorage.getItem("nuux_session")
-    if (savedSession) {
+    const restoreSession = async () => {
+      const token = localStorage.getItem("token")
+      if (!token) return
+
       try {
-        const { tenantId, userId } = JSON.parse(savedSession)
-        const tenant = tenants.find((t) => t.id === tenantId)
-        const user = users.find((u) => u.id === userId)
-        if (tenant && user) {
-          setCurrentTenant(tenant)
-          setCurrentUser(user)
+        // Fetch User Details
+        const userRes = await fetch("http://localhost:8000/usuarios/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!userRes.ok) throw new Error("Sesión expirada")
+        const userData = await userRes.json()
+
+        // Fetch Tenant Details
+        const tenantRes = await fetch(`http://localhost:8000/inquilinos/${userData.inquilino_id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!tenantRes.ok) throw new Error("Error empresa")
+        const tenantData = await tenantRes.json()
+
+        // Map Backend -> Frontend Types (Duplicate logic, ideally refactor to function but inline is fine for now)
+        const mappedUser: User = {
+          id: userData.id,
+          tenantId: userData.inquilino_id,
+          name: userData.nombre,
+          email: userData.email,
+          role: userData.rol,
+          roleId: "role-admin",
+          department: userData.departamento || "General",
+          position: userData.puesto || "Empleado",
+          salary: userData.salario || 0,
+          hireDate: userData.fecha_contratacion || new Date().toISOString(),
+          status: userData.estado === "activo" ? "active" : "inactive",
+          avatar: userData.avatar || "/placeholder.jpg",
+          twoFactorEnabled: false,
+          vacationDays: userData.dias_vacaciones || 0,
+          usedVacationDays: 0,
         }
-      } catch {
+
+        const mappedTenant: Tenant = {
+          id: tenantData.id,
+          name: tenantData.nombre,
+          slug: tenantData.slug,
+          plan: tenantData.plan as any,
+          status: tenantData.estado === "activo" ? "active" : "suspended",
+          createdAt: tenantData.fecha_creacion,
+          maxUsers: 100,
+          features: [],
+          settings: tenantData.configuracion || {
+            currency: "COP",
+            timezone: "America/Bogota",
+            language: "es",
+            fiscalYearStart: "01-01",
+            allowCustomRoles: true,
+            modules: [],
+          }
+        }
+
+        setCurrentUser(mappedUser)
+        setCurrentTenant(mappedTenant)
+      } catch (error) {
+        console.error("Session restore failed", error)
+        localStorage.removeItem("token")
         localStorage.removeItem("nuux_session")
       }
     }
-  }, [tenants, users])
+
+    restoreSession()
+  }, [])
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Simular delay de red
-    await new Promise((resolve) => setTimeout(resolve, 800))
+    try {
+      const formData = new FormData()
+      formData.append("username", email)
+      formData.append("password", password)
 
-    // Buscar usuario por email
-    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase())
+      const res = await fetch("http://localhost:8000/token", {
+        method: "POST",
+        body: formData,
+      })
 
-    if (!user) {
-      return { success: false, error: "Usuario no encontrado" }
+      if (!res.ok) {
+        const err = await res.json()
+        return { success: false, error: err.detail || "Error al iniciar sesión" }
+      }
+
+      // Backend now returns everything in one go!
+      const data = await res.json()
+      const token = data.access_token
+      const userData = data.usuario
+      const tenantData = data.inquilino
+
+      localStorage.setItem("token", token)
+
+      // Map Backend -> Frontend Types
+      const mappedUser: User = {
+        id: userData.id,
+        tenantId: userData.inquilino_id,
+        name: userData.nombre,
+        email: userData.email,
+        role: userData.rol,
+        roleId: "role-admin",
+        department: userData.departamento || "General",
+        position: userData.puesto || "Empleado",
+        salary: userData.salario || 0,
+        hireDate: userData.fecha_contratacion || new Date().toISOString(),
+        status: userData.estado === "activo" ? "active" : "inactive",
+        avatar: userData.avatar || "/placeholder.jpg",
+        twoFactorEnabled: false,
+        vacationDays: userData.dias_vacaciones || 0,
+        usedVacationDays: 0,
+      }
+
+      const mappedTenant: Tenant = {
+        id: tenantData.id,
+        name: tenantData.nombre,
+        slug: tenantData.slug,
+        plan: tenantData.plan as any,
+        status: tenantData.estado === "activo" ? "active" : "suspended",
+        createdAt: tenantData.fecha_creacion,
+        maxUsers: 100,
+        features: [],
+        settings: { // Backend might not send settings yet, use defaults
+          currency: "COP",
+          timezone: "America/Bogota",
+          language: "es",
+          fiscalYearStart: "01-01",
+          allowCustomRoles: true,
+          modules: [],
+        }
+      }
+
+      setCurrentUser(mappedUser)
+      setCurrentTenant(mappedTenant)
+
+      // Save session
+      localStorage.setItem("nuux_session", JSON.stringify({ tenantId: mappedTenant.id, userId: mappedUser.id }))
+
+      return { success: true }
+    } catch (error: any) {
+      console.error("Login error:", error)
+      return { success: false, error: error.message || "Error de conexión" }
     }
-
-    // En produccion aqui iria la validacion real de password
-    // Para demo, cualquier password funciona
-
-    const tenant = tenants.find((t) => t.id === user.tenantId)
-
-    if (!tenant) {
-      return { success: false, error: "Empresa no encontrada" }
-    }
-
-    if (tenant.status === "suspended") {
-      return { success: false, error: "La cuenta de esta empresa esta suspendida" }
-    }
-
-    setCurrentUser(user)
-    setCurrentTenant(tenant)
-
-    // Save session
-    localStorage.setItem(
-      "nuux_session",
-      JSON.stringify({
-        tenantId: tenant.id,
-        userId: user.id,
-      }),
-    )
-
-    return { success: true }
   }
 
   const logout = () => {
+    // 1. Clear local session immediately
     setCurrentUser(null)
     setCurrentTenant(null)
     localStorage.removeItem("nuux_session")
+    localStorage.removeItem("token")
+
+    // 2. Notify backend (Fire and forget, don't await)
+    fetch("http://localhost:8000/logout", { method: "POST" }).catch(e =>
+      console.error("Logout background error", e)
+    )
+
+    // 3. Force redirect to ensure clean state
+    window.location.href = "/login"
   }
 
   const hasPermission = (module: string, action: string): boolean => {

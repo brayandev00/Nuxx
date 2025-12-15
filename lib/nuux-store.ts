@@ -22,8 +22,16 @@ import type {
 interface NuuxStore {
   // Inventory State
   products: Product[]
+  addProduct: (product: Omit<Product, "id" | "createdAt" | "updatedAt" | "createdBy">) => void
+  updateProduct: (id: string, updates: Partial<Product>) => void
+  deleteProduct: (id: string) => void
+
   stockMovements: StockMovement[]
+
   warehouses: Warehouse[]
+  addWarehouse: (warehouse: Omit<Warehouse, "id">) => void
+  updateWarehouse: (id: string, updates: Partial<Warehouse>) => void
+  deleteWarehouse: (id: string) => void
   purchaseOrders: PurchaseOrder[]
   suppliers: Supplier[]
   addSupplier: (supplier: Omit<Supplier, "id" | "status">) => void
@@ -404,6 +412,52 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
     primaryColor: "#0f172a", // slate-900
     footerText: "Gracias por su compra. Generado por Nuux Finance.",
     showLogo: true,
+  },
+
+  // Inventory CRUD
+  addProduct: (product) => {
+    const newProduct: Product = {
+      ...product,
+      id: `PRD-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: "USR-CURRENT", // Should get from context
+      status: "active",
+      lots: []
+    }
+    set((state) => ({ products: [...state.products, newProduct] }))
+  },
+
+  updateProduct: (id, updates) => {
+    set((state) => ({
+      products: state.products.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p)),
+    }))
+  },
+
+  deleteProduct: (id) => {
+    set((state) => ({
+      products: state.products.filter((p) => p.id !== id),
+    }))
+  },
+
+  addWarehouse: (warehouse) => {
+    const newWarehouse: Warehouse = {
+      ...warehouse,
+      id: `WH-${Date.now()}`,
+    }
+    set((state) => ({ warehouses: [...state.warehouses, newWarehouse] }))
+  },
+
+  updateWarehouse: (id, updates) => {
+    set((state) => ({
+      warehouses: state.warehouses.map((w) => (w.id === id ? { ...w, ...updates } : w)),
+    }))
+  },
+
+  deleteWarehouse: (id) => {
+    set((state) => ({
+      warehouses: state.warehouses.filter((w) => w.id !== id),
+    }))
   },
 
   // KARDEX - FIFO Stock Out
