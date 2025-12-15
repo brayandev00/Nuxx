@@ -73,31 +73,33 @@ export function ProjectDistributionChart() {
       <h3 className="text-lg font-semibold text-foreground mb-2">Distribución por Área</h3>
       <p className="text-muted-foreground text-sm mb-6">Proyectos activos por departamento</p>
       <div className="flex items-center gap-8">
-        <ResponsiveContainer width="50%" height={200}>
-          <PieChart>
-            <Pie
-              data={projectDistribution}
-              cx="50%"
-              cy="50%"
-              innerRadius={50}
-              outerRadius={80}
-              paddingAngle={4}
-              dataKey="value"
-            >
-              {projectDistribution.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#18181b",
-                border: "1px solid #27272a",
-                borderRadius: "8px",
-                color: "#fafafa",
-              }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+        <div className="w-1/2 h-[200px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={projectDistribution}
+                cx="50%"
+                cy="50%"
+                innerRadius={50}
+                outerRadius={80}
+                paddingAngle={4}
+                dataKey="value"
+              >
+                {projectDistribution.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#18181b",
+                  border: "1px solid #27272a",
+                  borderRadius: "8px",
+                  color: "#fafafa",
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
         <div className="space-y-3">
           {projectDistribution.map((item) => (
             <div key={item.name} className="flex items-center gap-3">
