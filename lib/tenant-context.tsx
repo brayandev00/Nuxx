@@ -54,6 +54,7 @@ interface TenantContextType {
   addUser: (user: Omit<User, "id">) => void
   updateUser: (userId: string, updates: Partial<User>) => void
   deleteUser: (userId: string) => void
+  uploadTenantLogo: (file: File) => Promise<boolean>
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined)
@@ -191,13 +192,59 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const getTenantUsers = () => users
   const getTenantRoles = () => roles
 
-  const updateTenant = (updates: Partial<Tenant>) => console.log("updateTenant not implemented", updates)
+  const updateTenant = async (updates: Partial<Tenant>) => {
+    if (!currentTenant) return
+
+    try {
+      // Optimistic update
+      const updatedTenant = { ...currentTenant, ...updates }
+      setCurrentTenant(updatedTenant)
+
+      // In real app: await apiClient.put(`/inquilinos/${currentTenant.id}`, updates)
+      toast.success("Información actualizada")
+    } catch (error) {
+      console.error("Error updating tenant", error)
+      toast.error("Error al actualizar la información")
+      // Revert would go here
+    }
+  }
   const addRole = (role: any) => console.log("addRole not implemented", role)
   const updateRole = (id: string, updates: any) => console.log("updateRole not implemented", id, updates)
   const deleteRole = (id: string) => console.log("deleteRole not implemented", id)
   const addUser = (user: any) => console.log("addUser not implemented", user)
   const updateUser = (id: string, updates: any) => console.log("updateUser not implemented", id, updates)
   const deleteUser = (id: string) => console.log("deleteUser not implemented", id)
+
+  const uploadTenantLogo = async (file: File) => {
+    if (!currentTenant) return false
+
+    try {
+      const formData = new FormData()
+      formData.append("logo", file)
+
+      // Mock implementation for now as backend endpoint might vary
+      // In real scenario: await apiClient.post(`/inquilinos/${currentTenant.id}/logo`, formData)
+
+      // Simulate success and update local state
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        if (e.target?.result && currentTenant) {
+          setCurrentTenant({
+            ...currentTenant,
+            logo: e.target.result as string
+          })
+        }
+      }
+      reader.readAsDataURL(file)
+
+      toast.success("Logo actualizado correctamente")
+      return true
+    } catch (error) {
+      console.error("Error uploading logo:", error)
+      toast.error("Error al actualizar el logo")
+      return false
+    }
+  }
 
   return (
     <TenantContext.Provider
@@ -222,6 +269,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         addUser,
         updateUser,
         deleteUser,
+        uploadTenantLogo,
       }}
     >
       {children}

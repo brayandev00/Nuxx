@@ -1,5 +1,5 @@
 import { Header } from "@/components/header"
-import { ProfileSettings, NotificationSettings, SecuritySettings, AppearanceSettings } from "@/components/settings-form"
+import { ProfileSettings, NotificationSettings, SecuritySettings, DataSettings } from "@/components/settings-form"
 
 export default function SettingsPage() {
   return (
@@ -12,7 +12,7 @@ export default function SettingsPage() {
           <NotificationSettings />
           <SecuritySettings />
         </div>
-        <AppearanceSettings />
+        <DataSettings />
       </div>
     </div>
   )

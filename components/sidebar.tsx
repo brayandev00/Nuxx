@@ -4,6 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { NuuxLogo } from "./nuux-logo"
+import { CompanyModal } from "./company-modal"
 import {
   LayoutDashboard,
   FolderKanban,
@@ -56,6 +57,7 @@ interface SidebarProps {
 export function Sidebar({ className, isMobile, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const [showCompanyModal, setShowCompanyModal] = useState(false)
   const { currentTenant, currentUser, currentRole, logout, hasPermission } = useTenant()
 
   const visibleItems = navItems.filter((item) => {
@@ -85,7 +87,10 @@ export function Sidebar({ className, isMobile, onNavigate }: SidebarProps) {
       {/* Ten informacion  */}
       {!isCollapsed && (
         <div className="p-4 border-b border-zinc-800">
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 transition-colors cursor-pointer">
+          <div
+            onClick={() => setShowCompanyModal(true)}
+            className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 transition-colors cursor-pointer"
+          >
             {currentTenant?.logo ? (
               <Image
                 src={currentTenant.logo}
@@ -101,10 +106,11 @@ export function Sidebar({ className, isMobile, onNavigate }: SidebarProps) {
             )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{currentTenant?.name || "Lineas Pereiranas"}</p>
-              <p className="text-xs text-zinc-500">Enterprise</p>
+              <p className="text-xs text-zinc-500 capitalize">Plan {currentTenant?.plan}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-zinc-500" />
           </div>
+          <CompanyModal open={showCompanyModal} onOpenChange={setShowCompanyModal} />
         </div>
       )}
 

@@ -26,6 +26,7 @@ export interface Tenant {
   features: string[]
   settings: TenantSettings
   branding?: TenantBranding
+  googleDriveConnected?: boolean
 }
 
 export interface TenantBranding {
@@ -34,6 +35,10 @@ export interface TenantBranding {
   faviconUrl?: string
   companySlogan?: string
   welcomeMessage?: string
+  website?: string
+  email?: string
+  phone?: string
+  address?: string
 }
 
 export interface TenantSettings {
@@ -569,6 +574,9 @@ export interface Document {
   createdAt: string
   updatedAt: string
   tags: string[]
+  deletedAt?: string | null
+  signedAt?: string
+  signedBy?: string
 }
 
 export interface DocumentVersion {

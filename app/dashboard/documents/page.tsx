@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
 import {
   Search,
   Folder,
@@ -36,7 +37,12 @@ import {
   MoreVertical,
   FileIcon,
   X,
-  CloudUpload
+  CloudUpload,
+  HardDrive,
+  RefreshCw,
+  LogOut,
+  RotateCcw,
+  AlertTriangle
 } from "lucide-react"
 import type { Document, Folder as FolderType } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -48,8 +54,10 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useTenant } from "@/lib/tenant-context"
+import { GoogleConnectButton } from "@/components/google-connect-button"
 
-// Mock Data (Expanded)
+// Mock Data
 const mockFolders: FolderType[] = [
   { id: "FLD-001", tenantId: "tenant-001", name: "Recursos Humanos", parentId: null, type: "system", createdAt: "2024-01-01" },
   { id: "FLD-002", tenantId: "tenant-001", name: "Proyectos Activos", parentId: null, type: "system", createdAt: "2024-01-01" },
@@ -65,6 +73,11 @@ const mockFolders: FolderType[] = [
     entityId: "user-001",
     createdAt: "2024-03-15",
   },
+]
+
+const driveFolders: FolderType[] = [
+  { id: "DRV-001", tenantId: "tenant-001", name: "Google Drive - Compartido", parentId: null, type: "system", createdAt: "2024-01-01" },
+  { id: "DRV-002", tenantId: "tenant-001", name: "Drive - Finanzas", parentId: "DRV-001", type: "system", createdAt: "2024-01-01" },
 ]
 
 const mockDocuments: Document[] = [
@@ -89,6 +102,7 @@ const mockDocuments: Document[] = [
     createdAt: "2024-03-15",
     updatedAt: "2024-09-01",
     tags: ["contrato", "rh"],
+    deletedAt: null
   },
   {
     id: "DOC-002",
@@ -111,6 +125,7 @@ const mockDocuments: Document[] = [
     createdAt: "2024-12-01",
     updatedAt: "2024-12-01",
     tags: ["finanzas", "2025"],
+    deletedAt: null
   },
   {
     id: "DOC-003",
@@ -133,10 +148,12 @@ const mockDocuments: Document[] = [
     createdAt: "2024-12-10",
     updatedAt: "2024-12-10",
     tags: ["branding", "logo"],
+    deletedAt: null
   },
 ]
 
 export default function DocumentsPage() {
+  const { currentTenant } = useTenant()
   const [documents, setDocuments] = useState(mockDocuments)
   const [folders, setFolders] = useState(mockFolders)
   const [searchQuery, setSearchQuery] = useState("")
@@ -145,18 +162,156 @@ export default function DocumentsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [isDragging, setIsDragging] = useState(false)
 
+  // App State
+  const [activeSection, setActiveSection] = useState<"drive" | "trash">("drive")
+  const [isDriveConnected, setIsDriveConnected] = useState(false)
+  const [isConnectingDrive, setIsConnectingDrive] = useState(false)
+
   // Dialog States
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
 
-  // Form States (Mock)
+  // Form States
   const [newFolderName, setNewFolderName] = useState("")
-  const [uploadFiles, setUploadFiles] = useState<File[]>([])
+  const [editName, setEditName] = useState("")
+  const [editDesc, setEditDesc] = useState("")
 
   const rootFolders = folders.filter((f) => f.parentId === null)
   const currentFolderData = currentFolder ? folders.find((f) => f.id === currentFolder) : null
   const childFolders = folders.filter((f) => f.parentId === currentFolder)
-  const folderDocuments = documents.filter((d) => d.folderId === currentFolder)
+  const folderDocuments = documents.filter((d) => d.folderId === currentFolder && !d.deletedAt)
+
+  // Trash Logic
+  const trashDocuments = documents.filter(d => d.deletedAt !== null)
+  const activeDocumentsCount = documents.filter(d => d.deletedAt === null).length
+  const trashCount = trashDocuments.length
+
+  const handleConnectDrive = () => {
+    // Legacy mock function - kept for reference if needed
+  }
+
+  /* 
+   * FRONTEND-ONLY GOOGLE DRIVE INTEGRATION
+   * Uses the Access Token to fetch files directly from Google API.
+   * No backend required for this view-only mode.
+   */
+  const handleDriveSuccess = async (tokenResponse: any) => {
+    setIsConnectingDrive(true)
+    try {
+      const accessToken = tokenResponse.access_token
+
+      toast.info("Conectando con Drive...", { description: "Obteniendo tus archivos..." })
+
+      // 1. Fetch Files from Google Drive API
+      const response = await fetch("https://www.googleapis.com/drive/v3/files?pageSize=10&fields=files(id,name,mimeType,webViewLink,iconLink,size)&q=trashed=false", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+
+      if (!response.ok) throw new Error("Failed to fetch drive files")
+
+      const data = await response.json()
+
+      // 2. Map Drive Files to our Folder/Document structure
+      const driveDocs: Document[] = data.files.map((f: any) => ({
+        id: f.id,
+        tenantId: currentTenant?.id || "default",
+        name: f.name,
+        description: "Importado desde Google Drive",
+        type: "asset",
+        category: "general",
+        fileUrl: f.webViewLink,
+        fileSize: parseInt(f.size || "0"),
+        mimeType: f.mimeType,
+        folderId: "DRV-ROOT", // Check if folder or file
+        relatedEntityId: null,
+        relatedEntityType: null,
+        version: 1,
+        versions: [],
+        status: "draft",
+        signatures: [],
+        createdBy: "google-user",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        tags: ["drive"],
+        deletedAt: null
+      }))
+
+      // 3. Create a Root Drive Folder
+      const rootDriveFolder: FolderType = {
+        id: "DRV-ROOT",
+        tenantId: currentTenant?.id || "default",
+        name: "Mi Unidad (Google Drive)",
+        parentId: null,
+        type: "system",
+        createdAt: new Date().toISOString()
+      }
+
+      setIsDriveConnected(true)
+      setFolders(prev => [...prev, rootDriveFolder])
+      setDocuments(prev => [...prev, ...driveDocs])
+
+      toast.success("¡Sincronización Exitosa!", {
+        description: `Se han importado ${driveDocs.length} archivos de tu Google Drive.`
+      })
+
+    } catch (error) {
+      console.error(error)
+      toast.error("Error al sincronizar", { description: "No se pudieron obtener los archivos." })
+    } finally {
+      setIsConnectingDrive(false)
+    }
+  }
+
+  const handleDisconnectDrive = () => {
+    setIsDriveConnected(false)
+    setFolders(folders.filter(f => !f.id.startsWith("DRV")))
+    toast.info("Cuenta de Google desconectada")
+  }
+
+  const handleDelete = (doc: Document) => {
+    setDocuments(prev => prev.map(d => d.id === doc.id ? { ...d, deletedAt: new Date().toISOString() } : d))
+    setSelectedDocument(null)
+    toast.success("Archivo movido a la papelera")
+  }
+
+  const handleRestore = (doc: Document) => {
+    setDocuments(prev => prev.map(d => d.id === doc.id ? { ...d, deletedAt: null } : d))
+    toast.success("Archivo restaurado", { description: "Lo encontrarás en su carpeta original." })
+  }
+
+  const handlePermanentDelete = (doc: Document) => {
+    setDocuments(prev => prev.filter(d => d.id !== doc.id))
+    toast.error("Archivo eliminado permanentemente", { description: "Esta acción no se puede deshacer." })
+  }
+
+  const handleSign = (doc: Document) => {
+    setDocuments(prev => prev.map(d => d.id === doc.id ? {
+      ...d,
+      status: "signed",
+      signedAt: new Date().toISOString(),
+      signedBy: "Jorge Fernández"
+    } : d))
+    setSelectedDocument(prev => prev ? { ...prev, status: "signed" } : null)
+    toast.success("Documento firmado exitosamente")
+  }
+
+  const handleSaveEdit = () => {
+    if (!selectedDocument) return
+    setDocuments(prev => prev.map(d => d.id === selectedDocument.id ? { ...d, name: editName, description: editDesc } : d))
+    setSelectedDocument(prev => prev ? { ...prev, name: editName, description: editDesc } : null)
+    setIsEditOpen(false)
+    toast.success("Cambios guardados")
+  }
+
+  const openEdit = (doc: Document) => {
+    setEditName(doc.name)
+    setEditDesc(doc.description || "")
+    setSelectedDocument(doc)
+    setIsEditOpen(true)
+  }
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`
@@ -172,6 +327,7 @@ export default function DocumentsPage() {
   }
 
   const getFolderIcon = (folder: FolderType) => {
+    if (folder.name.includes("Drive")) return <HardDrive className="w-10 h-10 text-blue-500" />
     if (folder.name.includes("Humanos")) return <Users className="w-10 h-10 text-rose-400" />
     if (folder.name.includes("Proyectos")) return <Briefcase className="w-10 h-10 text-blue-400" />
     if (folder.name.includes("Finanzas")) return <Building2 className="w-10 h-10 text-emerald-400" />
@@ -179,6 +335,7 @@ export default function DocumentsPage() {
     return <Folder className="w-10 h-10 text-zinc-600 fill-zinc-600/20" />
   }
 
+  // ... Drag and Drop logic remains same ...
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(true)
@@ -191,28 +348,13 @@ export default function DocumentsPage() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    setIsUploadOpen(true) // Open upload dialog
-  }
-
-  const handleCreateFolder = () => {
-    // Mock creation
-    const newFolder: FolderType = {
-      id: `FLD-${Date.now()}`,
-      tenantId: "tenant-001",
-      name: newFolderName,
-      parentId: currentFolder,
-      type: "custom",
-      createdAt: new Date().toISOString()
-    }
-    setFolders([...folders, newFolder])
-    setNewFolderName("")
-    setIsNewFolderOpen(false)
+    setIsUploadOpen(true)
   }
 
   return (
     <div className="flex bg-black h-screen overflow-hidden">
 
-      {/* Sidebar Filters */}
+      {/* Sidebar */}
       <div className="w-64 border-r border-[#27272A] bg-[#09090B] p-4 hidden md:flex flex-col gap-6">
         <div className="flex items-center gap-2 mb-2 px-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -222,26 +364,36 @@ export default function DocumentsPage() {
         </div>
 
         <div className="space-y-1">
+          <Button
+            variant="ghost"
+            className={cn("w-full justify-start", activeSection === 'drive' ? "bg-zinc-800 text-white" : "text-zinc-400 hover:text-white hover:bg-zinc-800")}
+            onClick={() => setActiveSection("drive")}
+          >
+            <HardDrive className="w-4 h-4 mr-2" /> Mis Archivos
+          </Button>
           <Button variant="ghost" className="w-full justify-start text-zinc-400 hover:text-white hover:bg-zinc-800">
             <Clock className="w-4 h-4 mr-2" /> Recientes
           </Button>
           <Button variant="ghost" className="w-full justify-start text-zinc-400 hover:text-white hover:bg-zinc-800">
             <CheckCircle2 className="w-4 h-4 mr-2" /> Firmados
           </Button>
-          <Button variant="ghost" className="w-full justify-start text-zinc-400 hover:text-white hover:bg-zinc-800">
+          <Button
+            variant="ghost"
+            className={cn("w-full justify-start", activeSection === 'trash' ? "bg-red-500/10 text-red-500" : "text-zinc-400 hover:text-red-400 hover:bg-zinc-800")}
+            onClick={() => { setActiveSection("trash"); setCurrentFolder(null); }}
+          >
             <Trash2 className="w-4 h-4 mr-2" /> Papelera
+            {trashCount > 0 && <span className="ml-auto text-xs bg-red-500 text-white px-1.5 rounded-full">{trashCount}</span>}
           </Button>
         </div>
 
-        <div className="space-y-4">
-          <p className="text-xs font-medium text-zinc-500 px-2 uppercase tracking-wider">Etiquetas</p>
-          <div className="flex flex-wrap gap-2 px-2">
-            {["Contratos", "Facturas", "Marketing", "Legal"].map(tag => (
-              <Badge key={tag} variant="outline" className="cursor-pointer hover:bg-zinc-800 border-zinc-700 text-zinc-400">
-                #{tag}
-              </Badge>
-            ))}
-          </div>
+        <div className="space-y-4 pt-4 border-t border-zinc-800">
+          <p className="text-xs font-medium text-zinc-500 px-2 uppercase tracking-wider">Integraciones</p>
+          <GoogleConnectButton
+            onSuccess={handleDriveSuccess}
+            isConnected={isDriveConnected}
+            onDisconnect={handleDisconnectDrive}
+          />
         </div>
 
         {/* Storage Widget */}
@@ -265,90 +417,99 @@ export default function DocumentsPage() {
       >
         {/* Top Bar */}
         <div className="h-16 border-b border-[#27272A] flex items-center justify-between px-6 bg-[#09090B]">
-          {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-zinc-400">
-            <button
-              onClick={() => setCurrentFolder(null)}
-              className="hover:text-white transition-colors flex items-center gap-1"
-            >
-              <Folder className="w-4 h-4" />
-              Inicio
-            </button>
-            {currentFolderData && (
+            {activeSection === 'trash' ? (
+              <span className="text-red-500 font-medium flex items-center gap-2"><Trash2 className="w-4 h-4" /> Papelera de Reciclaje</span>
+            ) : (
               <>
-                <ChevronRight className="w-4 h-4" />
-                <span className="text-white font-medium">{currentFolderData.name}</span>
+                <button onClick={() => setCurrentFolder(null)} className="hover:text-white transition-colors flex items-center gap-1">
+                  <Folder className="w-4 h-4" /> Inicio
+                </button>
+                {currentFolderData && (
+                  <>
+                    <ChevronRight className="w-4 h-4" />
+                    <span className="text-white font-medium">{currentFolderData.name}</span>
+                  </>
+                )}
               </>
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-3">
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-              <Input
-                placeholder="Buscar..."
-                className="pl-9 bg-zinc-900 border-zinc-800 text-sm h-9 focus:ring-blue-500/20"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            {activeSection !== 'trash' && (
+              <>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <Input
+                    placeholder="Buscar..."
+                    className="pl-9 bg-zinc-900 border-zinc-800 text-sm h-9 focus:ring-blue-500/20"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <div className="h-6 w-px bg-zinc-800 mx-2" />
+                <Button
+                  variant="outline"
+                  className="border-zinc-800 text-zinc-300 hover:bg-zinc-900"
+                  onClick={() => setIsNewFolderOpen(true)}
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Carpeta
+                </Button>
 
-            <div className="h-6 w-px bg-zinc-800 mx-2" />
-
-            <div className="flex bg-zinc-900 rounded-md p-1 border border-zinc-800">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-1.5 rounded transition-all ${viewMode === 'grid' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
-                <Grid className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-1.5 rounded transition-all ${viewMode === 'list' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
-                <ListIcon className="w-4 h-4" />
-              </button>
-            </div>
-
-            <Button
-              variant="outline"
-              className="border-zinc-800 text-zinc-300 hover:bg-zinc-900"
-              onClick={() => setIsNewFolderOpen(true)}
-            >
-              <Plus className="w-4 h-4 mr-2" /> Carpeta
-            </Button>
-
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-4 shadow-lg shadow-blue-500/20"
-              onClick={() => setIsUploadOpen(true)}
-            >
-              <Upload className="w-4 h-4 mr-2" /> Subir
-            </Button>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-4 shadow-lg shadow-blue-500/20"
+                  onClick={() => setIsUploadOpen(true)}
+                >
+                  <Upload className="w-4 h-4 mr-2" /> Subir
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
         {/* File Area */}
         <div className="flex-1 overflow-y-auto p-6 relative">
-          {isDragging && (
-            <div className="absolute inset-4 border-2 border-dashed border-blue-500 bg-blue-500/10 rounded-xl z-50 flex flex-col items-center justify-center backdrop-blur-sm">
-              <Upload className="w-16 h-16 text-blue-500 mb-4 animate-bounce" />
-              <h3 className="text-2xl font-bold text-white">Suelta los archivos aquí</h3>
-              <p className="text-blue-200">para subirlos a {currentFolderData?.name || "Inicio"}</p>
+
+          {activeSection === 'trash' ? (
+            <div className="max-w-[1920px] mx-auto space-y-8">
+              {trashDocuments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
+                  <Trash2 className="w-16 h-16 mb-4 opacity-20" />
+                  <p>La papelera está vacía</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-3 lg:grid-cols-4">
+                  {trashDocuments.map(doc => (
+                    <Card key={doc.id} className="bg-zinc-900/30 border-red-500/10 p-4 opacity-75 hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 bg-zinc-950 rounded">{getFileIcon(doc.mimeType)}</div>
+                        <div className="min-w-0">
+                          <p className="text-white font-medium truncate">{doc.name}</p>
+                          <p className="text-xs text-zinc-500">Eliminado el {new Date(doc.deletedAt!).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <Button size="sm" variant="secondary" className="w-full h-8 text-xs" onClick={() => handleRestore(doc)}>
+                          <RotateCcw className="w-3 h-3 mr-1.5" /> Restaurar
+                        </Button>
+                        <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handlePermanentDelete(doc)}>
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-
-          <div className="max-w-[1920px] mx-auto space-y-8">
-
-            {/* Folders Section */}
-            <section>
-              <h3 className="text-sm font-medium text-zinc-500 mb-4 flex items-center gap-2">
-                <Folder className="w-4 h-4" />
-                Carpetas
-              </h3>
-              <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-4 lg:grid-cols-5' : 'grid-cols-1'}`}>
-                {(currentFolder ? childFolders : rootFolders).map((folder) => (
-                  viewMode === 'grid' ? (
+          ) : (
+            <div className="max-w-[1920px] mx-auto space-y-8">
+              {/* Folders */}
+              <section>
+                <h3 className="text-sm font-medium text-zinc-500 mb-4 flex items-center gap-2">
+                  <Folder className="w-4 h-4" /> Carpetas
+                </h3>
+                <div className={`grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-5`}>
+                  {(currentFolder ? childFolders : rootFolders).map((folder) => (
                     <Card
                       key={folder.id}
                       className="bg-zinc-900/50 border-zinc-800/50 p-4 cursor-pointer hover:bg-zinc-800 hover:border-zinc-700 transition-all group"
@@ -373,62 +534,27 @@ export default function DocumentsPage() {
                         {documents.filter((d) => d.folderId === folder.id).length} archivos
                       </p>
                     </Card>
-                  ) : (
-                    <div
-                      key={folder.id}
-                      onClick={() => setCurrentFolder(folder.id)}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-zinc-900 border border-transparent hover:border-zinc-800 cursor-pointer group"
-                    >
-                      {getFolderIcon(folder)}
-                      <div className="flex-1">
-                        <p className="font-medium text-zinc-200">{folder.name}</p>
-                      </div>
-                      <div className="text-xs text-zinc-600 mr-4">
-                        {new Date(folder.createdAt).toLocaleDateString()}
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  )
-                ))}
-              </div>
-            </section>
-
-            {/* Documents Section */}
-            <section>
-              <h3 className="text-sm font-medium text-zinc-500 mb-4 flex items-center gap-2">
-                <FileIcon className="w-4 h-4" />
-                Archivos
-              </h3>
-
-              {folderDocuments.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-zinc-800 rounded-xl bg-zinc-900/30">
-                  <div className="w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center mb-4">
-                    <Upload className="w-8 h-8 text-zinc-600" />
-                  </div>
-                  <p className="text-zinc-400 font-medium">Esta carpeta está vacía</p>
-                  <p className="text-sm text-zinc-600 mt-1">Arrastra archivos aquí para subir</p>
+                  ))}
                 </div>
-              )}
+              </section>
 
-              <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-4 lg:grid-cols-6' : 'grid-cols-1'}`}>
-                {folderDocuments.map((doc) => (
-                  viewMode === 'grid' ? (
+              {/* Documents */}
+              <section>
+                <h3 className="text-sm font-medium text-zinc-500 mb-4 flex items-center gap-2">
+                  <FileIcon className="w-4 h-4" /> Archivos
+                </h3>
+                <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+                  {folderDocuments.map((doc) => (
                     <Card
                       key={doc.id}
                       className="bg-zinc-900/50 border-zinc-800/50 group cursor-pointer hover:bg-zinc-800 hover:border-blue-500/30 transition-all overflow-hidden relative"
                       onClick={() => setSelectedDocument(doc)}
                     >
                       <div className="aspect-[4/3] bg-zinc-950/50 flex items-center justify-center border-b border-zinc-800/50 group-hover:border-zinc-800 transition-colors relative">
-                        {/* Mock Preview Tint */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
                         {getFileIcon(doc.mimeType)}
-
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="secondary" size="icon" className="h-6 w-6">
-                            <MoreHorizontal className="w-3 h-3" />
-                          </Button>
-                        </div>
+                        {doc.status === 'signed' && (
+                          <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded shadow-lg">Firmado</div>
+                        )}
                       </div>
                       <div className="p-3">
                         <p className="font-medium text-zinc-200 text-sm truncate" title={doc.name}>{doc.name}</p>
@@ -436,33 +562,15 @@ export default function DocumentsPage() {
                           <span className="text-[10px] text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
                             {formatFileSize(doc.fileSize)}
                           </span>
-                          {doc.status === 'signed' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
                         </div>
                       </div>
                     </Card>
-                  ) : (
-                    <div
-                      key={doc.id}
-                      onClick={() => setSelectedDocument(doc)}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-zinc-900 border border-transparent hover:border-zinc-800 cursor-pointer group"
-                    >
-                      <div className="p-2 bg-zinc-950 rounded border border-zinc-800">
-                        {getFileIcon(doc.mimeType)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-zinc-200 truncate">{doc.name}</p>
-                        <p className="text-xs text-zinc-500">v{doc.version} • {new Date(doc.updatedAt).toLocaleDateString()}</p>
-                      </div>
-                      <div className="text-sm text-zinc-400 w-32 text-right">
-                        {formatFileSize(doc.fileSize)}
-                      </div>
-                    </div>
-                  )
-                ))}
-              </div>
-            </section>
+                  ))}
+                </div>
+              </section>
+            </div>
+          )}
 
-          </div>
         </div>
       </div>
 
@@ -471,9 +579,6 @@ export default function DocumentsPage() {
         <DialogContent className="bg-[#18181B] border-[#27272A] sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-white">Nueva Carpeta</DialogTitle>
-            <DialogDescription className="text-zinc-500">
-              Crea una carpeta para organizar tus documentos.
-            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -488,128 +593,102 @@ export default function DocumentsPage() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setIsNewFolderOpen(false)} className="text-zinc-400">Cancelar</Button>
-            <Button onClick={handleCreateFolder} className="bg-blue-600 text-white hover:bg-blue-700">
-              Crear Carpeta
-            </Button>
+            <Button onClick={() => { setFolders([...folders, { id: `FLD-${Date.now()}`, tenantId: "1", name: newFolderName, parentId: currentFolder, type: "custom", createdAt: new Date().toISOString() }]); setIsNewFolderOpen(false); setNewFolderName("") }} className="bg-blue-600 text-white">Crear</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* UPLOAD DIALOG */}
-      <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-        <DialogContent className="bg-[#18181B] border-[#27272A] sm:max-w-xl">
+      {/* EDIT DIALOG */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="bg-[#18181B] border-[#27272A] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">Subir Archivos</DialogTitle>
+            <DialogTitle className="text-white">Editar Documento</DialogTitle>
           </DialogHeader>
-          <div
-            className="border-2 border-dashed border-zinc-800 hover:border-blue-500/50 bg-zinc-900/50 rounded-xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer"
-          >
-            <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mb-4">
-              <CloudUpload className="w-8 h-8 text-blue-500" />
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nombre</Label>
+              <Input value={editName} onChange={e => setEditName(e.target.value)} className="bg-zinc-900 border-zinc-800 text-white" />
             </div>
-            <p className="text-zinc-300 font-medium text-lg">Haz clic o arrastra archivos aquí</p>
-            <p className="text-zinc-500 text-sm mt-2">Soporta PDF, DOCX, XLSX, PNG, JPG (Max 50MB)</p>
+            <div className="space-y-2">
+              <Label>Descripción</Label>
+              <Textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} className="bg-zinc-900 border-zinc-800 text-white" />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsUploadOpen(false)} className="text-zinc-400">Cancelar</Button>
+            <Button variant="ghost" onClick={() => setIsEditOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} className="bg-emerald-600 text-white">Guardar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* File Detail Dialog (PREVIEW) */}
-      {selectedDocument && (
+
+      {/* DETAIL DIALOG */}
+      {selectedDocument && activeSection !== 'trash' && (
         <Dialog open={!!selectedDocument} onOpenChange={() => setSelectedDocument(null)}>
           <DialogContent className="bg-[#18181B] border-[#27272A] max-w-5xl p-0 overflow-hidden flex flex-col md:flex-row h-[85vh]">
 
-            {/* Left: Preview */}
             <div className="flex-1 bg-[#09090B] flex flex-col relative border-r border-[#27272A]">
-              <div className="h-14 border-b border-[#27272A] flex items-center justify-between px-4 bg-[#09090B]">
-                <span className="text-zinc-400 text-sm">Vista Previa</span>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400"><Download className="w-4 h-4" /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400"><Share2 className="w-4 h-4" /></Button>
-                </div>
-              </div>
+              <div className="h-14 border-b border-[#27272A] flex items-center justify-center px-4 bg-[#09090B]"><span className="text-zinc-400 text-sm">Vista Previa</span></div>
               <div className="flex-1 flex items-center justify-center p-8 bg-zinc-950/50">
                 <div className="text-center space-y-4">
-                  <div className="w-32 h-32 mx-auto rounded-2xl bg-zinc-900 flex items-center justify-center border border-zinc-800 shadow-2xl">
+                  <div className="w-32 h-32 mx-auto rounded-2xl bg-zinc-900 flex items-center justify-center border border-zinc-800 shadow-2xl relative">
                     {getFileIcon(selectedDocument.mimeType)}
                   </div>
-                  <p className="text-zinc-500">Vista previa del archivo no disponible</p>
+                  <p className="text-zinc-500">Vista previa no disponible</p>
                 </div>
               </div>
             </div>
 
-            {/* Right: Metadata */}
             <div className="w-full md:w-[400px] bg-[#18181B] flex flex-col">
               <div className="p-6 border-b border-[#27272A]">
                 <h2 className="text-xl font-bold text-white leading-tight mb-2">{selectedDocument.name}</h2>
-                <Badge variant="secondary" className="bg-zinc-800 text-zinc-400 hover:bg-zinc-800">{selectedDocument.mimeType}</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="bg-zinc-800 text-zinc-400">{selectedDocument.mimeType}</Badge>
+                  {selectedDocument.status === 'signed' && <Badge className="bg-emerald-500 text-white">Firmado</Badge>}
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-8">
-
-                {/* Description */}
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Descripción</label>
-                  <p className="text-zinc-300 text-sm leading-relaxed">
-                    {selectedDocument.description || "Sin descripción proporcionada."}
-                  </p>
+                  <p className="text-zinc-300 text-sm leading-relaxed">{selectedDocument.description || "Sin descripción"}</p>
                 </div>
 
-                <div className="h-px bg-zinc-800" />
-
-                {/* Status */}
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Estado</label>
-                  <div className="flex items-center gap-2">
-                    {selectedDocument.status === 'signed' ? (
-                      <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20 px-3 py-1">Firmado</Badge>
-                    ) : (
-                      <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 hover:bg-yellow-500/20 px-3 py-1">Pendiente</Badge>
-                    )}
-                    <span className="text-xs text-zinc-500 ml-auto">Versión {selectedDocument.version}</span>
+                {selectedDocument.status === 'signed' && (
+                  <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-emerald-400">Firmado Digitalmente</p>
+                      <p className="text-xs text-emerald-500/70 mt-1">Por {selectedDocument.signedBy || "Usuario"} el {new Date(selectedDocument.signedAt!).toLocaleDateString()}</p>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Metadata Grid */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
-                    <span className="text-xs text-zinc-500 block mb-1">Tamaño</span>
-                    <span className="text-sm text-white font-medium">{formatFileSize(selectedDocument.fileSize)}</span>
+                  <div className="p-3 bg-zinc-900 rounded border border-zinc-800">
+                    <span className="text-xs text-zinc-500">Creado</span>
+                    <p className="text-sm text-white">{new Date(selectedDocument.createdAt).toLocaleDateString()}</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
-                    <span className="text-xs text-zinc-500 block mb-1">Tipo</span>
-                    <span className="text-sm text-white font-medium truncate">{selectedDocument.category}</span>
+                  <div className="p-3 bg-zinc-900 rounded border border-zinc-800">
+                    <span className="text-xs text-zinc-500">Tamaño</span>
+                    <p className="text-sm text-white">{formatFileSize(selectedDocument.fileSize)}</p>
                   </div>
-                </div>
-
-                {/* Dates */}
-                <div className="space-y-3 pt-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500">Creado</span>
-                    <span className="text-zinc-300">{new Date(selectedDocument.createdAt).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500">Última edición</span>
-                    <span className="text-zinc-300">{new Date(selectedDocument.updatedAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Actions Footer */}
-              <div className="p-6 border-t border-[#27272A] bg-zinc-900/30">
-                <div className="grid grid-cols-2 gap-3">
-                  <Button variant="outline" className="border-zinc-800 hover:bg-zinc-800 text-zinc-300">
-                    <PenTool className="w-4 h-4 mr-2" /> Editar
-                  </Button>
-                  <Button variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
-                    <Trash2 className="w-4 h-4 mr-2" /> Eliminar
-                  </Button>
                 </div>
               </div>
 
+              <div className="p-6 border-t border-[#27272A] bg-zinc-900/30 grid grid-cols-2 gap-3">
+                <Button variant="outline" className="border-zinc-800 text-zinc-300" onClick={() => openEdit(selectedDocument)}>
+                  <PenTool className="w-4 h-4 mr-2" /> Editar
+                </Button>
+                {selectedDocument.status !== 'signed' && (
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleSign(selectedDocument)}>
+                    <PenTool className="w-4 h-4 mr-2" /> Firmar
+                  </Button>
+                )}
+                <Button variant="ghost" className="col-span-2 text-red-500 hover:bg-red-500/10" onClick={() => handleDelete(selectedDocument)}>
+                  <Trash2 className="w-4 h-4 mr-2" /> Mover a Papelera
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

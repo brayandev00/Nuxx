@@ -26,11 +26,11 @@ class ApiClient {
         const config: RequestInit = {
             ...customConfig,
             headers: {
-                "Content-Type": "application/json",
+                ...(data instanceof FormData ? {} : { "Content-Type": "application/json" }),
                 ...(token && { Authorization: `Bearer ${token}` }),
                 ...headers,
             },
-            body: data ? JSON.stringify(data) : undefined,
+            body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
         }
 
         try {
