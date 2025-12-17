@@ -131,21 +131,31 @@ export default function RolesPage() {
     isNewRole = false,
   ) => {
     if (isNewRole) {
-      setNewRolePermissions((prev) => ({
-        ...prev,
-        [moduleId]: {
-          ...prev[moduleId],
-          [action]: !prev[moduleId][action],
-        },
-      }))
+      setNewRolePermissions((prev) => {
+        const currentModulePerms = prev[moduleId] || { view: false, create: false, edit: false, delete: false, export: false }
+        return {
+          ...prev,
+          [moduleId]: {
+            ...currentModulePerms,
+            [action]: !currentModulePerms[action],
+          },
+        }
+      })
     } else if (selectedRole && !selectedRole.isSystem) {
+      const currentModulePerms = selectedRole.permissions[moduleId] || {
+        view: false,
+        create: false,
+        edit: false,
+        delete: false,
+        export: false,
+      }
       const updatedRole = {
         ...selectedRole,
         permissions: {
           ...selectedRole.permissions,
           [moduleId]: {
-            ...selectedRole.permissions[moduleId],
-            [action]: !selectedRole.permissions[moduleId][action],
+            ...currentModulePerms,
+            [action]: !currentModulePerms[action],
           },
         },
         updatedAt: new Date().toISOString().split("T")[0],

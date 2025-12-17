@@ -242,7 +242,7 @@ export default function InventoryPage() {
 
       <div className="p-8">
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card className="p-6 bg-card border-border">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-primary/10">

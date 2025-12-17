@@ -47,7 +47,13 @@ const navItems = [
   { href: "/dashboard/security", icon: Lock, label: "Seguridad", module: "security" },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  className?: string
+  isMobile?: boolean
+  onNavigate?: () => void
+}
+
+export function Sidebar({ className, isMobile, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const { currentTenant, currentUser, currentRole, logout, hasPermission } = useTenant()
@@ -57,23 +63,27 @@ export function Sidebar() {
     return hasPermission(item.module, "view")
   })
 
+  // Force expand on mobile
+  const isCollapsed = isMobile ? false : collapsed
+
   return (
     <aside
       className={cn(
-        "h-screen bg-zinc-950 border-r border-zinc-800 flex flex-col transition-all duration-300 relative",
-        collapsed ? "w-20" : "w-64"
+        "bg-zinc-950 border-r border-zinc-800 flex flex-col transition-all duration-300 relative",
+        isCollapsed ? "w-20" : "w-64",
+        className
       )}
     >
       {/* Header */}
       <div className={cn(
         "p-6 border-b border-zinc-800 flex items-center justify-center",
-        collapsed ? "p-4" : "p-6"
+        isCollapsed ? "p-4" : "p-6"
       )}>
-        <NuuxLogo size={collapsed ? "small" : "default"} />
+        <NuuxLogo size={isCollapsed ? "small" : "default"} />
       </div>
 
       {/* Ten informacion  */}
-      {!collapsed && (
+      {!isCollapsed && (
         <div className="p-4 border-b border-zinc-800">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 transition-colors cursor-pointer">
             {currentTenant?.logo ? (
@@ -108,9 +118,10 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 mb-1 rounded-lg transition-all group relative",
-                collapsed && "justify-center",
+                isCollapsed && "justify-center",
                 isActive
                   ? "bg-emerald-500/10 text-emerald-500"
                   : "text-zinc-400 hover:text-white hover:bg-zinc-900"
@@ -120,7 +131,7 @@ export function Sidebar() {
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-500 rounded-r" />
               )}
               <Icon className="w-5 h-5 flex-shrink-0" />
-              {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+              {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
             </Link>
           )
         })}
@@ -128,7 +139,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="p-4 border-t border-zinc-800">
-        {!collapsed ? (
+        {!isCollapsed ? (
           <div className="space-y-2">
             <div className="flex items-center gap-3 p-2 rounded-lg">
               <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
@@ -173,12 +184,14 @@ export function Sidebar() {
       </div>
 
       {/* Collapse Toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-6 w-6 h-6 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-      >
-        {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
-      </button>
+      {!isMobile && (
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute -right-3 top-6 w-6 h-6 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+        >
+          {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+        </button>
+      )}
     </aside>
   )
 }
