@@ -558,17 +558,18 @@ export interface Document {
   id: string
   tenantId: string
   name: string
-  type: "contrato" | "factura" | "certificado" | "brief" | "entregable" | "otro"
-  category: "empleado" | "proyecto" | "cliente" | "proveedor" | "legal"
+  type: "contrato" | "factura" | "certificado" | "brief" | "entregable" | "otro" | "asset" | "finance"
+  category: "empleado" | "proyecto" | "cliente" | "proveedor" | "legal" | "finanzas" | "marketing" | "general"
   fileUrl: string
   description?: string
   fileSize: number
   mimeType: string
   folderId: string
-  relatedEntityId?: string
-  relatedEntityType?: "user" | "project" | "client" | "supplier"
+  relatedEntityId?: string | null
+  relatedEntityType?: "user" | "project" | "client" | "supplier" | null
   version: number
   versions: DocumentVersion[]
+  status?: "draft" | "pending" | "signed" | "rejected"
   signatures: DigitalSignature[]
   createdBy: string
   createdAt: string

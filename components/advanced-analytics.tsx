@@ -182,6 +182,83 @@ export function ActivityHeatmap() {
     )
 }
 
+// --- Additional Data ---
+const expensesData = [
+    { name: 'Nómina', value: 45000, color: '#8b5cf6' },
+    { name: 'Infraestructura', value: 25000, color: '#ec4899' },
+    { name: 'Marketing', value: 15000, color: '#10b981' },
+    { name: 'Operarión', value: 10000, color: '#f59e0b' },
+]
+
+const allocationData = [
+    { name: 'Dev Team', active: 85, idle: 15 },
+    { name: 'Design', active: 90, idle: 10 },
+    { name: 'Marketing', active: 70, idle: 30 },
+]
+
+export function ExpensesDonut() {
+    return (
+        <Card className="p-6 bg-card/40 backdrop-blur-xl border-white/5 relative overflow-hidden h-full">
+            <h3 className="text-lg font-bold mb-4">Desglose de Gastos</h3>
+            <div className="h-[250px] w-full relative">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={expensesData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                        >
+                            {expensesData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0)" />
+                            ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                </ResponsiveContainer>
+                {/* Center Text */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-2xl font-bold text-white">$95k</span>
+                    <span className="text-xs text-zinc-500">Total Mes</span>
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-4">
+                {expensesData.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs text-zinc-400">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span>{item.name}</span>
+                    </div>
+                ))}
+            </div>
+        </Card>
+    )
+}
+
+export function ResourceAllocation() {
+    return (
+        <Card className="p-6 bg-card/40 backdrop-blur-xl border-white/5 relative overflow-hidden h-full">
+            <h3 className="text-lg font-bold mb-4">Asignación de Recursos</h3>
+            <div className="space-y-6">
+                {allocationData.map((item, idx) => (
+                    <div key={idx}>
+                        <div className="flex justify-between text-sm mb-2">
+                            <span className="text-zinc-300">{item.name}</span>
+                            <span className="text-emerald-400">{item.active}% Activo</span>
+                        </div>
+                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden flex">
+                            <div className="h-full bg-emerald-500" style={{ width: `${item.active}%` }} />
+                            <div className="h-full bg-zinc-800" style={{ width: `${item.idle}%` }} />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </Card>
+    )
+}
+
 export function NeonStatCard({ title, value, sub, icon: Icon, colorClass, borderClass }: any) {
     return (
         <Card className={`p-6 bg-zinc-950/50 backdrop-blur-2xl border ${borderClass} relative overflow-hidden group`}>

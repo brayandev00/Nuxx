@@ -39,6 +39,7 @@ export default function LoginPage() {
     { email: "pedro@lineaspereiranas.com", company: "Lineas Pereiranas", role: "Administrador" },
     { email: "paula@tuninsports.com", company: "Tunin Sports", role: "Directora" },
     { email: "carlos@lineaspereiranas.com", company: "Lineas Pereiranas", role: "Jefe Bodega" },
+    { email: "test@nuux.com", company: "Empresa de Prueba", role: "Cuenta Limpia (Offline)" },
   ]
 
   return (
@@ -51,7 +52,7 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md relative z-10">
         <div className="flex justify-center mb-8">
-          <NuuxLogo size="large" />
+          <NuuxLogo />
         </div>
 
         {/* Tagline */}

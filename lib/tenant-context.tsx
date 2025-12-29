@@ -79,6 +79,34 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       if (!token) return
 
       try {
+        if (token === "test-token") {
+          const testUser: User = {
+            id: "test-user-id",
+            tenantId: "test-tenant-id",
+            name: "Usuario de Prueba",
+            email: "test@nuux.com",
+            role: "admin",
+            roleId: "role-admin",
+            department: "Testing",
+            position: "Tester",
+            salary: 0,
+            hireDate: new Date().toISOString(),
+            status: "active",
+            avatar: "/placeholder.jpg",
+            twoFactorEnabled: false,
+            vacationDays: 0,
+            usedVacationDays: 0,
+          }
+          const testTenant: Tenant = {
+            ...FALLBACK_TENANT,
+            id: "test-tenant-id",
+            name: "Empresa de Prueba (Limpia)",
+            slug: "test-company",
+          }
+          setCurrentUser(testUser)
+          setCurrentTenant(testTenant)
+          return
+        }
         // 1. Get User Data
         const userData = await apiClient.get<any>("/usuarios/me")
 
@@ -95,11 +123,15 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         // Load metadata (Roles, etc)
         // In a real app we might fetch this from an API too
         // For now we keep using empty or minimal defaults until we implement those endpoints
-      } catch (error) {
-        console.error("Session restore failed", error)
+      } catch (error: any) {
+        if (error.message !== "Sesión expirada") {
+          console.error("Session restore failed", error)
+        }
         // apiClient handles redirect on 401, so we just clear local state here
         localStorage.removeItem("token")
         localStorage.removeItem("nuux_session")
+        setCurrentUser(null)
+        setCurrentTenant(null)
       }
     }
 
@@ -138,6 +170,42 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
+      // TEST MODE LOGIC
+      if (email === "test@nuux.com") {
+        const testUser: User = {
+          id: "test-user-id",
+          tenantId: "test-tenant-id",
+          name: "Usuario de Prueba",
+          email: "test@nuux.com",
+          role: "admin",
+          roleId: "role-admin",
+          department: "Testing",
+          position: "Tester",
+          salary: 0,
+          hireDate: new Date().toISOString(),
+          status: "active",
+          avatar: "/placeholder.jpg",
+          twoFactorEnabled: false,
+          vacationDays: 0,
+          usedVacationDays: 0,
+        }
+
+        const testTenant: Tenant = {
+          ...FALLBACK_TENANT,
+          id: "test-tenant-id",
+          name: "Empresa de Prueba (Limpia)",
+          slug: "test-company",
+        }
+
+        localStorage.setItem("token", "test-token")
+        setCurrentUser(testUser)
+        setCurrentTenant(testTenant)
+        localStorage.setItem("nuux_session", JSON.stringify({ tenantId: testTenant.id, userId: testUser.id }))
+        toast.success("Modo de Prueba Activado")
+        return { success: true }
+      }
+
+      // REAL BACKEND LOGIN
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
 
       const res = await fetch(`${API_URL}/auth/login`, {

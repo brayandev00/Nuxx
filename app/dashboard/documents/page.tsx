@@ -201,6 +201,16 @@ export default function DocumentsPage() {
     try {
       const accessToken = tokenResponse.access_token
 
+      console.log("Drive Sync Debug:", {
+        hasToken: !!accessToken,
+        tokenLength: accessToken?.length,
+        scopes: tokenResponse.scope
+      })
+
+      if (!accessToken) {
+        throw new Error("No access token received from Google")
+      }
+
       toast.info("Conectando con Drive...", { description: "Obteniendo tus archivos..." })
 
       // 1. Fetch Files from Google Drive API
@@ -210,7 +220,11 @@ export default function DocumentsPage() {
         }
       })
 
-      if (!response.ok) throw new Error("Failed to fetch drive files")
+      if (!response.ok) {
+        const errorBody = await response.text()
+        console.error("Google Drive API Error:", response.status, response.statusText, errorBody)
+        throw new Error(`Failed to fetch drive files: ${response.status} ${response.statusText}`)
+      }
 
       const data = await response.json()
 
@@ -258,8 +272,14 @@ export default function DocumentsPage() {
       })
 
     } catch (error) {
-      console.error(error)
-      toast.error("Error al sincronizar", { description: "No se pudieron obtener los archivos." })
+      console.error("Drive Sync Error:", error)
+      let msg = "No se pudieron obtener los archivos."
+      if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+        msg = "Error de conexión. Verifica tu ad-blocker o antivirus."
+      } else if (error instanceof Error) {
+        msg = error.message
+      }
+      toast.error("Error al sincronizar", { description: msg })
     } finally {
       setIsConnectingDrive(false)
     }

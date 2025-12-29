@@ -74,7 +74,7 @@ interface NuuxStore {
   generatePurchaseOrder: (productId: string) => PurchaseOrder | null // Keep local for UI draft?
   transferStock: (productId: string, quantity: number, fromWarehouse: string, toWarehouse: string) => Promise<boolean>
   createPurchaseOrder: (po: Omit<PurchaseOrder, "id" | "createdAt">) => Promise<void>
-  updatePurchaseOrder: (id: string, status: PurchaseOrder["status"]) => Promise<void>
+  updatePurchaseOrder: (id: string, statusOrData: PurchaseOrder["status"] | Partial<PurchaseOrder>) => Promise<void>
 
 
   // Finance Actions
@@ -213,16 +213,34 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
     set({ suppliers: data })
   },
   addSupplier: async (s) => {
-    await apiClient.post("/suppliers", s)
-    get().fetchSuppliers()
+    try {
+      await apiClient.post("/suppliers", s)
+      toast.success("Proveedor agregado correctamente")
+      get().fetchSuppliers()
+    } catch (e) {
+      console.error("Error adding supplier", e)
+      toast.error("Error al agregar proveedor")
+    }
   },
   updateSupplier: async (id, u) => {
-    await apiClient.put(`/suppliers/${id}`, u)
-    get().fetchSuppliers()
+    try {
+      await apiClient.put(`/suppliers/${id}`, u)
+      toast.success("Proveedor actualizado")
+      get().fetchSuppliers()
+    } catch (e) {
+      console.error("Error updating supplier", e)
+      toast.error("Error al actualizar proveedor")
+    }
   },
   deleteSupplier: async (id) => {
-    await apiClient.delete(`/suppliers/${id}`)
-    get().fetchSuppliers()
+    try {
+      await apiClient.delete(`/suppliers/${id}`)
+      toast.success("Proveedor eliminado")
+      get().fetchSuppliers()
+    } catch (e) {
+      console.error("Error deleting supplier", e)
+      toast.error("Error al eliminar proveedor")
+    }
   },
 
   // Purchase Orders
@@ -231,12 +249,26 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
     set({ purchaseOrders: data })
   },
   createPurchaseOrder: async (po) => {
-    await apiClient.post("/purchase-orders", po)
-    get().fetchPurchaseOrders()
+    try {
+      await apiClient.post("/purchase-orders", po)
+      toast.success("Orden de compra creada")
+      get().fetchPurchaseOrders()
+    } catch (e) {
+      console.error("Error creating PO", e)
+      toast.error("Error al crear Orden de Compra")
+    }
   },
-  updatePurchaseOrder: async (id, status) => {
-    await apiClient.put(`/purchase-orders/${id}`, { status })
-    get().fetchPurchaseOrders()
+  updatePurchaseOrder: async (id, statusOrData) => {
+    try {
+      // Handle both status string or full partial object
+      const payload = typeof statusOrData === 'string' ? { status: statusOrData } : statusOrData
+      await apiClient.put(`/purchase-orders/${id}`, payload)
+      toast.success("Orden de compra actualizada")
+      get().fetchPurchaseOrders()
+    } catch (e) {
+      console.error("Error updating PO", e)
+      toast.error("Error al actualizar Orden de Compra")
+    }
   },
 
   // Finance
