@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import Image from "next/image"
-import { usePathname } from "next/navigation"
-import { NuuxLogo } from "./nuux-logo"
-import { CompanyModal } from "./company-modal"
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { NuuxLogo } from "./nuux-logo";
+import { CompanyModal } from "./company-modal";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -26,47 +26,108 @@ import {
   Lock,
   Target,
   Clock,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useState } from "react"
-import { Button } from "./ui/button"
-import { useTenant } from "@/lib/tenant-context"
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { Button } from "./ui/button";
+import { useTenant } from "@/lib/tenant-context";
 
-const navItems = [
-  { href: "/dashboard/projects", icon: FolderKanban, label: "Proyectos", module: "projects" },
-  { href: "/dashboard/requests", icon: FileText, label: "Solicitudes", module: "dashboard" }, // Replaced CRM
-  { href: "/dashboard/analytics", icon: BarChart3, label: "Analitica", module: "analytics" },
+export const navItems = [
+  {
+    href: "/dashboard/projects",
+    icon: FolderKanban,
+    label: "Proyectos",
+    module: "projects",
+  },
+  {
+    href: "/dashboard/requests",
+    icon: FileText,
+    label: "Solicitudes",
+    module: "dashboard",
+  }, // Replaced CRM
+  {
+    href: "/dashboard/analytics",
+    icon: BarChart3,
+    label: "Analitica",
+    module: "analytics",
+  },
   { href: "/dashboard/team", icon: Users, label: "Equipo", module: "team" },
-  { href: "/dashboard/roles", icon: Shield, label: "Roles y Permisos", module: "roles" },
-  { href: "/dashboard/inventory", icon: Package, label: "Inventario", module: "inventory" },
-  { href: "/dashboard/procurement", icon: ShoppingCart, label: "Compras", module: "procurement" },
-  { href: "/dashboard/finance", icon: DollarSign, label: "Finanzas", module: "finance" },
-  { href: "/dashboard/payroll", icon: Receipt, label: "Nominas", module: "payroll" },
-  { href: "/dashboard/documents", icon: FileText, label: "Documentos", module: "documents" },
-  { href: "/dashboard/company", icon: Building2, label: "Mi Empresa", module: "settings" },
-  { href: "/dashboard/settings", icon: Settings, label: "Ajustes", module: "settings" },
-  { href: "/dashboard/security", icon: Lock, label: "Seguridad", module: "security" },
-]
+  {
+    href: "/dashboard/roles",
+    icon: Shield,
+    label: "Roles y Permisos",
+    module: "roles",
+  },
+  {
+    href: "/dashboard/inventory",
+    icon: Package,
+    label: "Inventario",
+    module: "inventory",
+  },
+  {
+    href: "/dashboard/procurement",
+    icon: ShoppingCart,
+    label: "Compras",
+    module: "procurement",
+  },
+  {
+    href: "/dashboard/finance",
+    icon: DollarSign,
+    label: "Finanzas",
+    module: "finance",
+  },
+  {
+    href: "/dashboard/payroll",
+    icon: Receipt,
+    label: "Nominas",
+    module: "payroll",
+  },
+  {
+    href: "/dashboard/documents",
+    icon: FileText,
+    label: "Documentos",
+    module: "documents",
+  },
+  {
+    href: "/dashboard/company",
+    icon: Building2,
+    label: "Mi Empresa",
+    module: "settings",
+  },
+  {
+    href: "/dashboard/settings",
+    icon: Settings,
+    label: "Ajustes",
+    module: "settings",
+  },
+  {
+    href: "/dashboard/security",
+    icon: Lock,
+    label: "Seguridad",
+    module: "security",
+  },
+];
 
 interface SidebarProps {
-  className?: string
-  isMobile?: boolean
-  onNavigate?: () => void
+  className?: string;
+  isMobile?: boolean;
+  onNavigate?: () => void;
 }
 
 export function Sidebar({ className, isMobile, onNavigate }: SidebarProps) {
-  const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
-  const [showCompanyModal, setShowCompanyModal] = useState(false)
-  const { currentTenant, currentUser, currentRole, logout, hasPermission } = useTenant()
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const { currentTenant, currentUser, currentRole, logout, hasPermission } =
+    useTenant();
 
   const visibleItems = navItems.filter((item) => {
-    if (!currentRole) return true
-    return hasPermission(item.module, "view")
-  })
+    if (!currentRole) return true;
+    return hasPermission(item.module, "view");
+  });
 
   // Force expand on mobile
-  const isCollapsed = isMobile ? false : collapsed
+  const isCollapsed = isMobile ? false : collapsed;
 
   return (
     <aside
@@ -77,10 +138,12 @@ export function Sidebar({ className, isMobile, onNavigate }: SidebarProps) {
       )}
     >
       {/* Header */}
-      <div className={cn(
-        "p-6 border-b border-zinc-800 flex items-center justify-center",
-        isCollapsed ? "p-4" : "p-6"
-      )}>
+      <div
+        className={cn(
+          "p-6 border-b border-zinc-800 flex items-center justify-center",
+          isCollapsed ? "p-4" : "p-6"
+        )}
+      >
         <NuuxLogo size={isCollapsed ? "small" : "default"} />
       </div>
 
@@ -105,20 +168,28 @@ export function Sidebar({ className, isMobile, onNavigate }: SidebarProps) {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{currentTenant?.name || "Lineas Pereiranas"}</p>
-              <p className="text-xs text-zinc-500 capitalize">Plan {currentTenant?.plan}</p>
+              <p className="text-sm font-medium text-white truncate">
+                {currentTenant?.name || "Lineas Pereiranas"}
+              </p>
+              <p className="text-xs text-zinc-500 capitalize">
+                Plan {currentTenant?.plan}
+              </p>
             </div>
             <ChevronRight className="w-4 h-4 text-zinc-500" />
           </div>
-          <CompanyModal open={showCompanyModal} onOpenChange={setShowCompanyModal} />
+          <CompanyModal
+            open={showCompanyModal}
+            onOpenChange={setShowCompanyModal}
+          />
         </div>
       )}
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-2">
         {visibleItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
-          const Icon = item.icon
+          const isActive =
+            pathname === item.href || pathname.startsWith(item.href + "/");
+          const Icon = item.icon;
 
           return (
             <Link
@@ -137,9 +208,11 @@ export function Sidebar({ className, isMobile, onNavigate }: SidebarProps) {
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-500 rounded-r" />
               )}
               <Icon className="w-5 h-5 flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
+              {!isCollapsed && (
+                <span className="text-sm font-medium">{item.label}</span>
+              )}
             </Link>
-          )
+          );
         })}
       </nav>
 
@@ -154,8 +227,12 @@ export function Sidebar({ className, isMobile, onNavigate }: SidebarProps) {
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{currentUser?.name || "Usuario"}</p>
-                <p className="text-xs text-zinc-500">{currentRole?.name || "Admin"}</p>
+                <p className="text-sm font-medium text-white truncate">
+                  {currentUser?.name || "Usuario"}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {currentRole?.name || "Admin"}
+                </p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -195,9 +272,13 @@ export function Sidebar({ className, isMobile, onNavigate }: SidebarProps) {
           onClick={() => setCollapsed(!collapsed)}
           className="absolute -right-3 top-6 w-6 h-6 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
         >
-          {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+          {collapsed ? (
+            <ChevronRight className="w-3 h-3" />
+          ) : (
+            <ChevronLeft className="w-3 h-3" />
+          )}
         </button>
       )}
     </aside>
-  )
+  );
 }

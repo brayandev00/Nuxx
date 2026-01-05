@@ -1,17 +1,31 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Header } from "@/components/header"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { useNuuxStore } from "@/lib/nuux-store"
+import { useState } from "react";
+import { Header } from "@/components/header";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useNuuxStore } from "@/lib/nuux-store";
 import {
   Package,
   AlertTriangle,
@@ -28,52 +42,75 @@ import {
   Pencil,
   Trash2,
   Printer,
-  X
-} from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
+  X,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 export default function InventoryPage() {
   // Search & Filter
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Dialog States
-  const [transferDialogOpen, setTransferDialogOpen] = useState(false)
-  const [productDialogOpen, setProductDialogOpen] = useState(false)
-  const [movementDialogOpen, setMovementDialogOpen] = useState(false)
-  const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false)
-  const [qrDialogOpen, setQrDialogOpen] = useState(false)
-  const [confirmDeleteDialogOpen, setConfirmDeleteDialogOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState("products")
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [movementDialogOpen, setMovementDialogOpen] = useState(false);
+  const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [confirmDeleteDialogOpen, setConfirmDeleteDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("products");
 
   // Form States & Selection
-  const [selectedProduct, setSelectedProduct] = useState<any | null>(null) // Full product object for edit/qr/del
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null) // ID for transfer
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null); // Full product object for edit/qr/del
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(
+    null
+  ); // ID for transfer
 
   // Product Form
   const [productForm, setProductForm] = useState({
-    name: "", sku: "", category: "", price: "", cost: "", minStock: "", warehouseId: "", description: ""
-  })
+    name: "",
+    sku: "",
+    category: "",
+    price: "",
+    cost: "",
+    minStock: "",
+    warehouseId: "",
+    description: "",
+  });
 
   // Movement Form
   const [movementForm, setMovementForm] = useState({
-    type: "entrada", quantity: "", reason: "", reference: "", unitCost: ""
-  })
+    type: "entrada",
+    quantity: "",
+    reason: "",
+    reference: "",
+    unitCost: "",
+  });
 
   // Warehouse Form
   const [warehouseForm, setWarehouseForm] = useState({
-    name: "", code: "", address: "", type: "sucursal"
-  })
+    name: "",
+    code: "",
+    address: "",
+    type: "sucursal",
+  });
 
   // Transfer Form
-  const [transferQty, setTransferQty] = useState("")
-  const [fromWarehouse, setFromWarehouse] = useState("")
-  const [toWarehouse, setToWarehouse] = useState("")
+  const [transferQty, setTransferQty] = useState("");
+  const [fromWarehouse, setFromWarehouse] = useState("");
+  const [toWarehouse, setToWarehouse] = useState("");
 
   // Delete Confirmation
-  const [deleteType, setDeleteType] = useState<"product" | "warehouse" | null>(null)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-
+  const [deleteType, setDeleteType] = useState<"product" | "warehouse" | null>(
+    null
+  );
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const {
     products,
@@ -89,25 +126,25 @@ export default function InventoryPage() {
     deleteProduct,
     addWarehouse,
     updateWarehouse,
-    deleteWarehouse
-  } = useNuuxStore()
+    deleteWarehouse,
+  } = useNuuxStore();
 
-  const lowStockProducts = checkLowStock()
-  const totalValue = products.reduce((acc, p) => acc + p.price * p.quantity, 0)
-  const totalProducts = products.reduce((acc, p) => acc + p.quantity, 0)
+  const lowStockProducts = checkLowStock();
+  const totalValue = products.reduce((acc, p) => acc + p.price * p.quantity, 0);
+  const totalProducts = products.reduce((acc, p) => acc + p.quantity, 0);
 
   const filteredProducts = products.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.id.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+      p.id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // --- Handlers ---
 
   const handleOpenProductDialog = (product?: any) => {
     if (product) {
-      setSelectedProduct(product)
+      setSelectedProduct(product);
       setProductForm({
         name: product.name,
         sku: product.sku,
@@ -116,14 +153,23 @@ export default function InventoryPage() {
         cost: product.cost.toString(),
         minStock: product.minStock.toString(),
         warehouseId: product.warehouseId,
-        description: product.description
-      })
+        description: product.description,
+      });
     } else {
-      setSelectedProduct(null)
-      setProductForm({ name: "", sku: "", category: "General", price: "", cost: "", minStock: "5", warehouseId: warehouses[0]?.id || "", description: "" })
+      setSelectedProduct(null);
+      setProductForm({
+        name: "",
+        sku: "",
+        category: "General",
+        price: "",
+        cost: "",
+        minStock: "5",
+        warehouseId: warehouses[0]?.id || "",
+        description: "",
+      });
     }
-    setProductDialogOpen(true)
-  }
+    setProductDialogOpen(true);
+  };
 
   const handleSaveProduct = () => {
     const productData = {
@@ -141,25 +187,35 @@ export default function InventoryPage() {
       location: "Bodega",
       supplierId: "SUP-DEFAULT",
       tenantId: "tenant-001",
-      barcode: productForm.sku
-    }
+      barcode: productForm.sku,
+    };
 
     if (selectedProduct) {
-      updateProduct(selectedProduct.id, productData as any)
+      updateProduct(selectedProduct.id, productData as any);
     } else {
-      addProduct(productData as any)
+      addProduct(productData as any);
     }
-    setProductDialogOpen(false)
-  }
+    setProductDialogOpen(false);
+  };
 
-  const handleOpenMovementDialog = (product: any, type: "entrada" | "salida") => {
-    setSelectedProduct(product)
-    setMovementForm({ ...movementForm, type, quantity: "", reference: "", unitCost: product.cost.toString(), reason: type === "entrada" ? "Compra" : "Venta" })
-    setMovementDialogOpen(true)
-  }
+  const handleOpenMovementDialog = (
+    product: any,
+    type: "entrada" | "salida"
+  ) => {
+    setSelectedProduct(product);
+    setMovementForm({
+      ...movementForm,
+      type,
+      quantity: "",
+      reference: "",
+      unitCost: product.cost.toString(),
+      reason: type === "entrada" ? "Compra" : "Venta",
+    });
+    setMovementDialogOpen(true);
+  };
 
   const handleSaveMovement = () => {
-    if (!selectedProduct) return
+    if (!selectedProduct) return;
 
     addStockMovement({
       tenantId: "tenant-001",
@@ -172,20 +228,20 @@ export default function InventoryPage() {
       reference: movementForm.reference,
       userId: "USR-CURRENT",
       date: new Date().toISOString(),
-      destinationWarehouse: selectedProduct.warehouseId // Default logic
-    })
-    setMovementDialogOpen(false)
-  }
+      destinationWarehouse: selectedProduct.warehouseId, // Default logic
+    });
+    setMovementDialogOpen(false);
+  };
 
   const handleOpenWarehouseDialog = (warehouse?: any) => {
     // Logic for editing warehouse (future)
     if (warehouse) {
       // Implement edit mode if needed
     } else {
-      setWarehouseForm({ name: "", code: "", address: "", type: "sucursal" })
+      setWarehouseForm({ name: "", code: "", address: "", type: "sucursal" });
     }
-    setWarehouseDialogOpen(true)
-  }
+    setWarehouseDialogOpen(true);
+  };
 
   const handleSaveWarehouse = () => {
     addWarehouse({
@@ -194,47 +250,51 @@ export default function InventoryPage() {
       code: warehouseForm.code,
       address: warehouseForm.address,
       type: warehouseForm.type as any,
-      status: "active"
-    })
-    setWarehouseDialogOpen(false)
-  }
+      status: "active",
+    });
+    setWarehouseDialogOpen(false);
+  };
 
   const handleGeneratePO = (productId: string) => {
-    const po = generatePurchaseOrder(productId)
+    const po = generatePurchaseOrder(productId);
     if (po) {
-      alert(`Orden de compra ${po.id} generada automaticamente`)
+      alert(`Orden de compra ${po.id} generada automaticamente`);
     }
-  }
+  };
 
   const handleTransfer = () => {
     if (selectedProductId && transferQty && fromWarehouse && toWarehouse) {
-      const success = transferStock(selectedProductId, Number.parseInt(transferQty), fromWarehouse, toWarehouse)
+      const success = transferStock(
+        selectedProductId,
+        Number.parseInt(transferQty),
+        fromWarehouse,
+        toWarehouse
+      );
       if (success) {
-        alert("Transferencia realizada exitosamente")
-        setTransferDialogOpen(false)
-        setSelectedProductId(null)
-        setTransferQty("")
+        alert("Transferencia realizada exitosamente");
+        setTransferDialogOpen(false);
+        setSelectedProductId(null);
+        setTransferQty("");
       } else {
-        alert("Error: Stock insuficiente en bodega origen")
+        alert("Error: Stock insuficiente en bodega origen");
       }
     }
-  }
+  };
 
   const handleConfirmDelete = (type: "product" | "warehouse", id: string) => {
-    setDeleteType(type)
-    setDeleteId(id)
-    setConfirmDeleteDialogOpen(true)
-  }
+    setDeleteType(type);
+    setDeleteId(id);
+    setConfirmDeleteDialogOpen(true);
+  };
 
   const executeDelete = () => {
     if (deleteType === "product" && deleteId) {
-      deleteProduct(deleteId)
+      deleteProduct(deleteId);
     } else if (deleteType === "warehouse" && deleteId) {
-      deleteWarehouse(deleteId)
+      deleteWarehouse(deleteId);
     }
-    setConfirmDeleteDialogOpen(false)
-  }
-
+    setConfirmDeleteDialogOpen(false);
+  };
 
   return (
     <div className="min-h-screen">
@@ -250,7 +310,9 @@ export default function InventoryPage() {
               </div>
               <div>
                 <p className="text-muted-foreground text-sm">Total Productos</p>
-                <p className="text-2xl font-bold text-foreground">{products.length}</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {products.length}
+                </p>
               </div>
             </div>
           </Card>
@@ -260,8 +322,12 @@ export default function InventoryPage() {
                 <TrendingUp className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-muted-foreground text-sm">Unidades en Stock</p>
-                <p className="text-2xl font-bold text-primary">{totalProducts}</p>
+                <p className="text-muted-foreground text-sm">
+                  Unidades en Stock
+                </p>
+                <p className="text-2xl font-bold text-primary">
+                  {totalProducts}
+                </p>
               </div>
             </div>
           </Card>
@@ -272,7 +338,9 @@ export default function InventoryPage() {
               </div>
               <div>
                 <p className="text-muted-foreground text-sm">Stock Bajo</p>
-                <p className="text-2xl font-bold text-destructive">{lowStockProducts.length}</p>
+                <p className="text-2xl font-bold text-destructive">
+                  {lowStockProducts.length}
+                </p>
               </div>
             </div>
           </Card>
@@ -283,7 +351,9 @@ export default function InventoryPage() {
               </div>
               <div>
                 <p className="text-muted-foreground text-sm">Bodegas</p>
-                <p className="text-2xl font-bold text-foreground">{warehouses.length}</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {warehouses.length}
+                </p>
               </div>
             </div>
           </Card>
@@ -294,7 +364,9 @@ export default function InventoryPage() {
               </div>
               <div>
                 <p className="text-muted-foreground text-sm">Valor Total</p>
-                <p className="text-2xl font-bold text-foreground">${(totalValue / 1000000).toFixed(1)}M</p>
+                <p className="text-2xl font-bold text-foreground">
+                  ${(totalValue / 1000000).toFixed(1)}M
+                </p>
               </div>
             </div>
           </Card>
@@ -306,15 +378,24 @@ export default function InventoryPage() {
             <div className="flex items-start gap-4">
               <AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="font-medium text-destructive">Alerta de Stock Bajo - Reabastecimiento Inteligente</p>
+                <p className="font-medium text-destructive">
+                  Alerta de Stock Bajo - Reabastecimiento Inteligente
+                </p>
                 <p className="text-sm text-muted-foreground mb-3">
-                  {lowStockProducts.length} producto(s) por debajo del minimo. Genera ordenes de compra automaticas.
+                  {lowStockProducts.length} producto(s) por debajo del minimo.
+                  Genera ordenes de compra automaticas.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {lowStockProducts.map((p) => (
-                    <div key={p.id} className="flex items-center gap-2 bg-[#09090B] px-3 py-2 rounded-lg">
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-2 bg-[#09090B] px-3 py-2 rounded-lg"
+                    >
                       <span className="text-sm text-foreground">{p.name}</span>
-                      <Badge variant="outline" className="bg-destructive/20 text-destructive text-xs">
+                      <Badge
+                        variant="outline"
+                        className="bg-destructive/20 text-destructive text-xs"
+                      >
                         {p.quantity}/{p.minStock}
                       </Badge>
                       <Button
@@ -335,7 +416,11 @@ export default function InventoryPage() {
         )}
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
           <div className="flex items-center justify-between flex-wrap gap-4">
             <TabsList className="bg-secondary">
               <TabsTrigger value="products">Productos</TabsTrigger>
@@ -371,32 +456,59 @@ export default function InventoryPage() {
                 <table className="w-full">
                   <thead className="bg-secondary/50">
                     <tr>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">ID / SKU</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Producto</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Bodega</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Lotes (FIFO)</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Precio</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Stock</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Estado</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Acciones</th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                        ID / SKU
+                      </th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                        Producto
+                      </th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                        Bodega
+                      </th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                        Lotes (FIFO)
+                      </th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                        Precio
+                      </th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                        Stock
+                      </th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                        Estado
+                      </th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {filteredProducts.map((product) => {
-                      const isLowStock = product.quantity <= product.minStock
-                      const warehouse = warehouses.find((w) => w.id === product.warehouseId)
+                      const isLowStock = product.quantity <= product.minStock;
+                      const warehouse = warehouses.find(
+                        (w) => w.id === product.warehouseId
+                      );
 
                       return (
-                        <tr key={product.id} className="hover:bg-secondary/30 transition-colors">
+                        <tr
+                          key={product.id}
+                          className="hover:bg-secondary/30 transition-colors"
+                        >
                           <td className="p-4">
                             <div>
-                              <p className="font-mono text-xs text-primary">{product.id}</p>
-                              <p className="font-mono text-xs text-muted-foreground">{product.sku}</p>
+                              <p className="font-mono text-xs text-primary">
+                                {product.id}
+                              </p>
+                              <p className="font-mono text-xs text-muted-foreground">
+                                {product.sku}
+                              </p>
                             </div>
                           </td>
                           <td className="p-4">
                             <div>
-                              <p className="font-medium text-foreground">{product.name}</p>
+                              <p className="font-medium text-foreground">
+                                {product.name}
+                              </p>
                               <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                                 {product.description}
                               </p>
@@ -409,26 +521,38 @@ export default function InventoryPage() {
                           </td>
                           <td className="p-4">
                             <div className="space-y-1">
-                              {product.lots.slice(0, 2).map((lot: any, i: number) => (
-                                <div key={lot.id} className="text-xs">
-                                  <span
-                                    className={cn(
-                                      "inline-block w-2 h-2 rounded-full mr-1",
-                                      i === 0 ? "bg-primary" : "bg-zinc-500",
-                                    )}
-                                  />
-                                  <span className="text-muted-foreground">{lot.lotNumber}:</span>
-                                  <span className="text-foreground ml-1">{lot.quantity} uds</span>
-                                </div>
-                              ))}
+                              {product.lots
+                                .slice(0, 2)
+                                .map((lot: any, i: number) => (
+                                  <div key={lot.id} className="text-xs">
+                                    <span
+                                      className={cn(
+                                        "inline-block w-2 h-2 rounded-full mr-1",
+                                        i === 0 ? "bg-primary" : "bg-zinc-500"
+                                      )}
+                                    />
+                                    <span className="text-muted-foreground">
+                                      {lot.lotNumber}:
+                                    </span>
+                                    <span className="text-foreground ml-1">
+                                      {lot.quantity} uds
+                                    </span>
+                                  </div>
+                                ))}
                               {product.lots.length > 2 && (
-                                <p className="text-xs text-primary">+{product.lots.length - 2} lotes mas</p>
+                                <p className="text-xs text-primary">
+                                  +{product.lots.length - 2} lotes mas
+                                </p>
                               )}
                             </div>
                           </td>
                           <td className="p-4">
-                            <p className="font-medium text-foreground">${product.price.toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">Costo: ${product.cost.toLocaleString()}</p>
+                            <p className="font-medium text-foreground">
+                              ${product.price.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Costo: ${product.cost.toLocaleString()}
+                            </p>
                           </td>
                           <td className="p-4">
                             <div className="flex items-center gap-2">
@@ -437,10 +561,19 @@ export default function InventoryPage() {
                               ) : (
                                 <TrendingUp className="w-4 h-4 text-primary" />
                               )}
-                              <span className={cn("font-medium", isLowStock ? "text-destructive" : "text-foreground")}>
+                              <span
+                                className={cn(
+                                  "font-medium",
+                                  isLowStock
+                                    ? "text-destructive"
+                                    : "text-foreground"
+                                )}
+                              >
                                 {product.quantity}
                               </span>
-                              <span className="text-xs text-muted-foreground">/ min {product.minStock}</span>
+                              <span className="text-xs text-muted-foreground">
+                                / min {product.minStock}
+                              </span>
                             </div>
                           </td>
                           <td className="p-4">
@@ -450,56 +583,93 @@ export default function InventoryPage() {
                                 product.status === "active"
                                   ? "bg-primary/10 text-primary"
                                   : product.status === "out_of_stock"
-                                    ? "bg-destructive/10 text-destructive"
-                                    : "bg-secondary text-muted-foreground",
+                                  ? "bg-destructive/10 text-destructive"
+                                  : "bg-secondary text-muted-foreground"
                               )}
                             >
                               {product.status === "active"
                                 ? "Activo"
                                 : product.status === "out_of_stock"
-                                  ? "Sin Stock"
-                                  : "Descontinuado"}
+                                ? "Sin Stock"
+                                : "Descontinuado"}
                             </Badge>
                           </td>
                           <td className="p-4">
                             <div className="flex items-center gap-2">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                                setSelectedProduct(product)
-                                setQrDialogOpen(true)
-                              }}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  setSelectedProduct(product);
+                                  setQrDialogOpen(true);
+                                }}
+                              >
                                 <QrCode className="w-4 h-4 text-primary" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                                setSelectedProduct(product)
-                                // Switch to Kardex tab logic could involve filtering, simplified to just switch for now
-                                setActiveTab("movements")
-                                setSearchTerm(product.name) // Simple filter hack
-                              }}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  setSelectedProduct(product);
+                                  // Switch to Kardex tab logic could involve filtering, simplified to just switch for now
+                                  setActiveTab("movements");
+                                  setSearchTerm(product.name); // Simple filter hack
+                                }}
+                              >
                                 <History className="w-4 h-4 text-muted-foreground" />
                               </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                  >
                                     <MoreHorizontal className="w-4 h-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="bg-card border-border">
-                                  <DropdownMenuItem onClick={() => handleOpenProductDialog(product)}>
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="bg-card border-border"
+                                >
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleOpenProductDialog(product)
+                                    }
+                                  >
                                     <Pencil className="w-4 h-4 mr-2" />
                                     Editar producto
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleOpenMovementDialog(product, "entrada")}>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleOpenMovementDialog(
+                                        product,
+                                        "entrada"
+                                      )
+                                    }
+                                  >
                                     <TrendingUp className="w-4 h-4 mr-2 text-green-500" />
                                     Registrar entrada
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleOpenMovementDialog(product, "salida")}>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleOpenMovementDialog(
+                                        product,
+                                        "salida"
+                                      )
+                                    }
+                                  >
                                     <TrendingDown className="w-4 h-4 mr-2 text-red-500" />
                                     Registrar salida
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     className="text-destructive focus:text-destructive"
-                                    onClick={() => handleConfirmDelete("product", product.id)}
+                                    onClick={() =>
+                                      handleConfirmDelete("product", product.id)
+                                    }
                                   >
                                     <Trash2 className="w-4 h-4 mr-2" />
                                     Eliminar
@@ -509,7 +679,7 @@ export default function InventoryPage() {
                             </div>
                           </td>
                         </tr>
-                      )
+                      );
                     })}
                   </tbody>
                 </table>
@@ -522,40 +692,69 @@ export default function InventoryPage() {
             <div className="bg-card rounded-2xl border border-border overflow-hidden">
               {/* Same implementation as before but now dynamic */}
               <div className="p-6 border-b border-border">
-                <h3 className="font-semibold text-foreground">Historial de Movimientos (KARDEX)</h3>
-                <p className="text-sm text-muted-foreground">Registro inmutable de todas las entradas y salidas</p>
+                <h3 className="font-semibold text-foreground">
+                  Historial de Movimientos (KARDEX)
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Registro inmutable de todas las entradas y salidas
+                </p>
               </div>
               {/* Filter check for searchTerm logic can be applied here too */}
               {stockMovements.length === 0 ? (
                 <div className="p-12 text-center">
                   <History className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No hay movimientos registrados</p>
+                  <p className="text-muted-foreground">
+                    No hay movimientos registrados
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-secondary/50">
                       <tr>
-                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">ID</th>
-                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Fecha</th>
-                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Tipo</th>
-                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Producto</th>
-                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Cantidad</th>
-                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Ref</th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                          ID
+                        </th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                          Fecha
+                        </th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                          Tipo
+                        </th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                          Producto
+                        </th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                          Cantidad
+                        </th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">
+                          Ref
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
                       {stockMovements
-                        .filter(m => {
-                          if (!searchTerm) return true
-                          const p = products.find(prod => prod.id === m.productId)
-                          return p?.name.toLowerCase().includes(searchTerm.toLowerCase()) || m.type.includes(searchTerm)
+                        .filter((m) => {
+                          if (!searchTerm) return true;
+                          const p = products.find(
+                            (prod) => prod.id === m.productId
+                          );
+                          return (
+                            p?.name
+                              .toLowerCase()
+                              .includes(searchTerm.toLowerCase()) ||
+                            m.type.includes(searchTerm)
+                          );
                         })
                         .map((mov) => {
-                          const product = products.find((p) => p.id === mov.productId)
+                          const product = products.find(
+                            (p) => p.id === mov.productId
+                          );
                           return (
                             <tr key={mov.id} className="hover:bg-secondary/30">
-                              <td className="p-4 font-mono text-xs text-primary">{mov.id}</td>
+                              <td className="p-4 font-mono text-xs text-primary">
+                                {mov.id}
+                              </td>
                               <td className="p-4 text-sm">{mov.date}</td>
                               <td className="p-4">
                                 <Badge
@@ -564,18 +763,25 @@ export default function InventoryPage() {
                                     mov.type === "entrada"
                                       ? "bg-primary/10 text-primary"
                                       : mov.type === "salida"
-                                        ? "bg-destructive/10 text-destructive"
-                                        : "bg-yellow-500/10 text-yellow-500",
+                                      ? "bg-destructive/10 text-destructive"
+                                      : "bg-yellow-500/10 text-yellow-500"
                                   )}
                                 >
-                                  {mov.type.charAt(0).toUpperCase() + mov.type.slice(1)}
+                                  {mov.type.charAt(0).toUpperCase() +
+                                    mov.type.slice(1)}
                                 </Badge>
                               </td>
-                              <td className="p-4 text-sm">{product?.name || mov.productId}</td>
-                              <td className="p-4 font-medium">{mov.quantity}</td>
-                              <td className="p-4 text-sm text-muted-foreground">{mov.reference || "-"}</td>
+                              <td className="p-4 text-sm">
+                                {product?.name || mov.productId}
+                              </td>
+                              <td className="p-4 font-medium">
+                                {mov.quantity}
+                              </td>
+                              <td className="p-4 text-sm text-muted-foreground">
+                                {mov.reference || "-"}
+                              </td>
                             </tr>
-                          )
+                          );
                         })}
                     </tbody>
                   </table>
@@ -588,13 +794,18 @@ export default function InventoryPage() {
           <TabsContent value="warehouses">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {warehouses.map((warehouse) => (
-                <Card key={warehouse.id} className="p-6 bg-card border-border hover:border-primary/30 transition-all relative group">
+                <Card
+                  key={warehouse.id}
+                  className="p-6 bg-card border-border hover:border-primary/30 transition-all relative group"
+                >
                   <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => handleConfirmDelete("warehouse", warehouse.id)}
+                      onClick={() =>
+                        handleConfirmDelete("warehouse", warehouse.id)
+                      }
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -605,17 +816,30 @@ export default function InventoryPage() {
                         <Warehouse className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-foreground">{warehouse.name}</h3>
-                        <p className="text-xs text-muted-foreground">{warehouse.code}</p>
+                        <h3 className="font-semibold text-foreground">
+                          {warehouse.name}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          {warehouse.code}
+                        </p>
                       </div>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">{warehouse.address}</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {warehouse.address}
+                  </p>
                   <div className="pt-4 border-t border-border flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">
-                      {products.filter((p) => p.warehouseId === warehouse.id).length} productos
+                      {
+                        products.filter((p) => p.warehouseId === warehouse.id)
+                          .length
+                      }{" "}
+                      productos
                     </span>
-                    <Badge variant="outline" className="bg-primary/10 text-primary">
+                    <Badge
+                      variant="outline"
+                      className="bg-primary/10 text-primary"
+                    >
                       Activa
                     </Badge>
                   </div>
@@ -639,7 +863,9 @@ export default function InventoryPage() {
           <TabsContent value="orders">
             {/* Simple Orders view, unchanged mostly */}
             <div className="bg-card rounded-2xl border border-border p-6">
-              <p className="text-muted-foreground">Modulo de órdenes de compra (vista simplificada)</p>
+              <p className="text-muted-foreground">
+                Modulo de órdenes de compra (vista simplificada)
+              </p>
               {/* ... existing table code ... */}
             </div>
           </TabsContent>
@@ -652,49 +878,117 @@ export default function InventoryPage() {
       <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
         <DialogContent className="bg-card border-border sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>{selectedProduct ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
+            <DialogTitle>
+              {selectedProduct ? "Editar Producto" : "Nuevo Producto"}
+            </DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
               <Label>Nombre</Label>
-              <Input value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} className="bg-secondary" placeholder="Ej: Laptop HP" />
+              <Input
+                value={productForm.name}
+                onChange={(e) =>
+                  setProductForm({ ...productForm, name: e.target.value })
+                }
+                className="bg-secondary"
+                placeholder="Ej: Laptop HP"
+              />
             </div>
             <div className="space-y-2">
               <Label>SKU</Label>
-              <Input value={productForm.sku} onChange={e => setProductForm({ ...productForm, sku: e.target.value })} className="bg-secondary" placeholder="Ej: LAP-001" />
+              <Input
+                value={productForm.sku}
+                onChange={(e) =>
+                  setProductForm({ ...productForm, sku: e.target.value })
+                }
+                className="bg-secondary"
+                placeholder="Ej: LAP-001"
+              />
             </div>
             <div className="space-y-2">
               <Label>Categoría</Label>
-              <Input value={productForm.category} onChange={e => setProductForm({ ...productForm, category: e.target.value })} className="bg-secondary" />
+              <Input
+                value={productForm.category}
+                onChange={(e) =>
+                  setProductForm({ ...productForm, category: e.target.value })
+                }
+                className="bg-secondary"
+              />
             </div>
             <div className="space-y-2">
               <Label>Bodega</Label>
-              <Select value={productForm.warehouseId} onValueChange={val => setProductForm({ ...productForm, warehouseId: val })}>
-                <SelectTrigger className="bg-secondary"><SelectValue /></SelectTrigger>
+              <Select
+                value={productForm.warehouseId}
+                onValueChange={(val) =>
+                  setProductForm({ ...productForm, warehouseId: val })
+                }
+              >
+                <SelectTrigger className="bg-secondary">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                  {warehouses.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Precio Venta</Label>
-              <Input type="number" value={productForm.price} onChange={e => setProductForm({ ...productForm, price: e.target.value })} className="bg-secondary" />
+              <Input
+                type="number"
+                value={productForm.price}
+                onChange={(e) =>
+                  setProductForm({ ...productForm, price: e.target.value })
+                }
+                className="bg-secondary"
+              />
             </div>
             <div className="space-y-2">
               <Label>Costo Unitario</Label>
-              <Input type="number" value={productForm.cost} onChange={e => setProductForm({ ...productForm, cost: e.target.value })} className="bg-secondary" />
+              <Input
+                type="number"
+                value={productForm.cost}
+                onChange={(e) =>
+                  setProductForm({ ...productForm, cost: e.target.value })
+                }
+                className="bg-secondary"
+              />
             </div>
             <div className="space-y-2">
               <Label>Stock Mínimo</Label>
-              <Input type="number" value={productForm.minStock} onChange={e => setProductForm({ ...productForm, minStock: e.target.value })} className="bg-secondary" />
+              <Input
+                type="number"
+                value={productForm.minStock}
+                onChange={(e) =>
+                  setProductForm({ ...productForm, minStock: e.target.value })
+                }
+                className="bg-secondary"
+              />
             </div>
             <div className="col-span-2 space-y-2">
               <Label>Descripción</Label>
-              <Textarea value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} className="bg-secondary" />
+              <Textarea
+                value={productForm.description}
+                onChange={(e) =>
+                  setProductForm({
+                    ...productForm,
+                    description: e.target.value,
+                  })
+                }
+                className="bg-secondary"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setProductDialogOpen(false)}>Cancelar</Button>
+            <Button
+              variant="outline"
+              onClick={() => setProductDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
             <Button onClick={handleSaveProduct}>Guardar Producto</Button>
           </DialogFooter>
         </DialogContent>
@@ -704,27 +998,61 @@ export default function InventoryPage() {
       <Dialog open={movementDialogOpen} onOpenChange={setMovementDialogOpen}>
         <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle>{movementForm.type === "entrada" ? "Registrar Entrada de Stock" : "Registrar Salida de Stock"}</DialogTitle>
+            <DialogTitle>
+              {movementForm.type === "entrada"
+                ? "Registrar Entrada de Stock"
+                : "Registrar Salida de Stock"}
+            </DialogTitle>
             <DialogDescription>{selectedProduct?.name}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Cantidad</Label>
-              <Input type="number" value={movementForm.quantity} onChange={e => setMovementForm({ ...movementForm, quantity: e.target.value })} className="bg-secondary" autoFocus />
+              <Input
+                type="number"
+                value={movementForm.quantity}
+                onChange={(e) =>
+                  setMovementForm({ ...movementForm, quantity: e.target.value })
+                }
+                className="bg-secondary"
+                autoFocus
+              />
             </div>
             {movementForm.type === "entrada" && (
               <div className="space-y-2">
                 <Label>Costo Unitario (Entrada)</Label>
-                <Input type="number" value={movementForm.unitCost} onChange={e => setMovementForm({ ...movementForm, unitCost: e.target.value })} className="bg-secondary" />
+                <Input
+                  type="number"
+                  value={movementForm.unitCost}
+                  onChange={(e) =>
+                    setMovementForm({
+                      ...movementForm,
+                      unitCost: e.target.value,
+                    })
+                  }
+                  className="bg-secondary"
+                />
               </div>
             )}
             <div className="space-y-2">
               <Label>Motivo / Referencia</Label>
-              <Input value={movementForm.reason} onChange={e => setMovementForm({ ...movementForm, reason: e.target.value })} className="bg-secondary" placeholder="Ej: Compra #123, Ajuste, Venta..." />
+              <Input
+                value={movementForm.reason}
+                onChange={(e) =>
+                  setMovementForm({ ...movementForm, reason: e.target.value })
+                }
+                className="bg-secondary"
+                placeholder="Ej: Compra #123, Ajuste, Venta..."
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setMovementDialogOpen(false)}>Cancelar</Button>
+            <Button
+              variant="outline"
+              onClick={() => setMovementDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
             <Button onClick={handleSaveMovement}>Registrar Movimiento</Button>
           </DialogFooter>
         </DialogContent>
@@ -739,19 +1067,47 @@ export default function InventoryPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Nombre</Label>
-              <Input value={warehouseForm.name} onChange={e => setWarehouseForm({ ...warehouseForm, name: e.target.value })} className="bg-secondary" placeholder="Ej: Bodega Norte" />
+              <Input
+                value={warehouseForm.name}
+                onChange={(e) =>
+                  setWarehouseForm({ ...warehouseForm, name: e.target.value })
+                }
+                className="bg-secondary"
+                placeholder="Ej: Bodega Norte"
+              />
             </div>
             <div className="space-y-2">
               <Label>Código</Label>
-              <Input value={warehouseForm.code} onChange={e => setWarehouseForm({ ...warehouseForm, code: e.target.value })} className="bg-secondary" placeholder="Ej: BN" />
+              <Input
+                value={warehouseForm.code}
+                onChange={(e) =>
+                  setWarehouseForm({ ...warehouseForm, code: e.target.value })
+                }
+                className="bg-secondary"
+                placeholder="Ej: BN"
+              />
             </div>
             <div className="space-y-2">
               <Label>Dirección</Label>
-              <Input value={warehouseForm.address} onChange={e => setWarehouseForm({ ...warehouseForm, address: e.target.value })} className="bg-secondary" />
+              <Input
+                value={warehouseForm.address}
+                onChange={(e) =>
+                  setWarehouseForm({
+                    ...warehouseForm,
+                    address: e.target.value,
+                  })
+                }
+                className="bg-secondary"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setWarehouseDialogOpen(false)}>Cancelar</Button>
+            <Button
+              variant="outline"
+              onClick={() => setWarehouseDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
             <Button onClick={handleSaveWarehouse}>Guardar Bodega</Button>
           </DialogFooter>
         </DialogContent>
@@ -761,7 +1117,9 @@ export default function InventoryPage() {
       <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
         <DialogContent className="bg-white text-black sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="text-center text-black">Código QR de Producto</DialogTitle>
+            <DialogTitle className="text-center text-black">
+              Código QR de Producto
+            </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center justify-center p-6 space-y-4">
             {selectedProduct && (
@@ -773,8 +1131,12 @@ export default function InventoryPage() {
                 />
                 <div className="text-center">
                   <p className="font-bold text-xl">{selectedProduct.name}</p>
-                  <p className="font-mono text-gray-600">{selectedProduct.sku}</p>
-                  <p className="text-sm font-bold mt-2 text-primary">{selectedProduct.quantity} unidades</p>
+                  <p className="font-mono text-gray-600">
+                    {selectedProduct.sku}
+                  </p>
+                  <p className="text-sm font-bold mt-2 text-primary">
+                    {selectedProduct.quantity} unidades
+                  </p>
                 </div>
               </>
             )}
@@ -789,21 +1151,31 @@ export default function InventoryPage() {
       </Dialog>
 
       {/* Confirm Delete Dialog */}
-      <Dialog open={confirmDeleteDialogOpen} onOpenChange={setConfirmDeleteDialogOpen}>
+      <Dialog
+        open={confirmDeleteDialogOpen}
+        onOpenChange={setConfirmDeleteDialogOpen}
+      >
         <DialogContent className="bg-card border-border">
           <DialogHeader>
             <DialogTitle>¿Estás seguro?</DialogTitle>
             <DialogDescription>
-              Esta acción no se puede deshacer. Esto eliminará permanentemente el {deleteType === "product" ? "producto" : "bodega"}.
+              Esta acción no se puede deshacer. Esto eliminará permanentemente
+              el {deleteType === "product" ? "producto" : "bodega"}.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDeleteDialogOpen(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={executeDelete}>Eliminar</Button>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDeleteDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={executeDelete}>
+              Eliminar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
-  )
+  );
 }

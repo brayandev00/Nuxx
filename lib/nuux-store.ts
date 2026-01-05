@@ -97,6 +97,11 @@ interface NuuxStore {
   checkIn: (userId: string) => Promise<void>
   checkOut: (userId: string) => Promise<void>
 
+  // Favorites
+  favorites: { label: string; href: string; type: "module" | "action" }[]
+  toggleFavorite: (item: { label: string; href: string; type: "module" | "action" }) => void
+  isFavorite: (href: string) => boolean
+
   calculatePayroll: (userId: string, period: string, overrides?: any) => Promise<PayrollRecord | null>
   requestVacation: (request: Omit<VacationRequest, "id" | "createdAt" | "status">) => Promise<void>
   approveVacation: (requestId: string, approverId: string) => Promise<void>
@@ -134,6 +139,23 @@ export const useNuuxStore = create<NuuxStore>((set, get) => ({
   },
 
   // --- Actions ---
+
+  // Favorites
+  favorites: [],
+  toggleFavorite: (item) => {
+    const { favorites } = get()
+    const exists = favorites.some((f) => f.href === item.href)
+    if (exists) {
+      set({ favorites: favorites.filter((f) => f.href !== item.href) })
+      toast.success("Eliminado de favoritos")
+    } else {
+      set({ favorites: [...favorites, item] })
+      toast.success("Añadido a favoritos")
+    }
+  },
+  isFavorite: (href) => {
+    return get().favorites.some((f) => f.href === href)
+  },
 
   // Products
   fetchProducts: async () => {
